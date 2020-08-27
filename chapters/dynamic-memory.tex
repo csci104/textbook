@@ -1,55 +1,39 @@
-At the physical level, computer memory consists of a large number of
-flip flops.
-Each flip flop consists of a few transistors,
-and is capable of storing one bit.
-Individual flip flops are addressable by a unique identifier,
-so we can read and overwrite them. 
-Thus, conceptually, we can think of all of our computer's memory as
-just one giant array of bits that we can read and write.
+At the physical level, computer memory consists of a large number of flip flops.
+Each flip flop consists of a few transistors, and is capable of storing one bit.
+Individual flip flops are addressable by a unique identifier, so we can read and overwrite them. 
+Thus, conceptually, we can think of all of our computer's memory as just one giant array of bits that we can read and write.
 
-Since as humans, we are not that good at doing all of our thinking and
-arithmetic in bits, we group them into larger groups,
-which together can be used to represent numbers.
-8 bits are called 1 byte; beyond bytes, there are words
-(which are sometimes 16, sometimes 32 bits).
-Thus, more often, we conceptually regard our computer's memory as one
-large (size $2^{32}$ or so) array of bytes.
+Since as humans, we are not that good at doing all of our thinking and arithmetic in bits, we group them into larger groups.
+Eight bits are called a byte, and beyond bytes, there are words (which are sometimes 16 and sometimes 32 bits).
+Thus, more often, we conceptually regard our computer's memory as one large (size $2^{32}$ or so) array of bytes.
 A lot of things are stored in this memory.
 
 \begin{enumerate}
 \item All variables and other data used by all programs.
-\item But also the code of all programs, including the code for the
-  operating system.
+\item The code of all programs, including the code for the operating system.
 \end{enumerate}
 
-The compiler and the operating system work together to take care of
-most memory management for you, but it is instructive to see what is
-going on under the hood.
+The compiler and the operating system work together to take care of most memory management for you, but it is instructive to see what is going on under the hood.
 
-When you compile your code, the compiler can examine primitive data
-types and calculate how much memory they will need ahead of time.
-The required amount is then allocated to the program in the
-\todef{stack}\footnote{This space is called the stack space because as
-  functions get called, their memory gets added on top of existing
-  memory. As they terminate, they are removed in a LIFO (last in,
-  first out) order. We will encounter this concept in more detail in
-  Chapter~\ref{chap:stacksqueues}, when we learn about the Stack data type.}
-space. For example, consider the following declarations: 
+When you compile your code, the compiler can examine primitive data types and calculate how much memory they will need ahead of time.
+The required amount is then allocated to the program in the \emph{stack}.
+This space is called the stack space because as functions get called, their memory gets added on top of existing memory.
+As they terminate, they are removed in a LIFO (last in, first out) order.
+We will encounter this concept in more detail in Chapter~\ref{chapter:stacks-queues}, when we learn about the stack data type.
+Consider the following declarations: 
+
 \begin{verbatim}
 int n;
 int x[10];
 double m;
 \end{verbatim}
-The compiler can immediately see that the code requires
-$4+4\times10+8=52$ bytes\footnote{That's with the current sizes for
-  integers and doubles. About 20 years ago, \code{int} were typically
-  2 bytes, and \code{double} 4 bytes. Your code should never have to
-  depend on what is at this moment the size of the basic data types.}.
 
-It will insert code that will interact with the operating system to
-request the necessary number of bytes on the stack for your variables
-to be stored. In the example above, the compiler knows that the memory
-will look as follows:
+The compiler can immediately see that the code requires $4+4\times10+8=52$ bytes, as integers are four bytes wide and doubles are eight\footnote{
+The sizes of primitives are platform dependent, but are generally as described.
+About 20 years ago, \texttt{int} were typically 2 bytes, and \texttt{double} 4 bytes.
+Your code should never have to depend on what is at this moment the size of the basic data types.}.
+On compilation, it will generate code that requests from the operating system the necessary number of bytes on the stack for your variables to be stored.
+In the example above, the compiler knows that the memory will look something like this:
 
 \begin{figure}[htb]
 \setlength{\unitlength}{0.1in}
@@ -85,7 +69,7 @@ will look as follows:
 \end{figure}
 
 It knows the exact memory address of each variable;
-in fact, whenever we write \code{n}, this gets translated into
+in fact, whenever we write \texttt{n}, this gets translated into
 something like ``memory address 4127963'' internally.
 
 Notice that if we attempted to access $x[10]$ here, we would access
@@ -101,7 +85,7 @@ damages and massive security breaches.
 
 \begin{figure}[htb]
 \centering
-\includegraphics[scale=0.4]{comics/xkcd_heartbleed_explanation.eps}
+\includegraphics[scale=0.4]{assets/xkcd_heartbleed_explanation.eps}
 \caption{XKCD \# 1353: Explanation of the Heartbleed Bug}
 \end{figure}
 
@@ -147,17 +131,17 @@ void bar (int n)
 }
 \end{verbatim}
 
-Here, when \code{bar} calls \code{foo}, the function \code{foo} cannot
-access the variables \code{n} or \code{m}.
-As soon as \code{foo} finishes, the variables \code{x} and \code{y}
+Here, when \texttt{bar} calls \texttt{foo}, the function \texttt{foo} cannot
+access the variables \texttt{n} or \texttt{m}.
+As soon as \texttt{foo} finishes, the variables \texttt{x} and \texttt{y}
 are deallocated, and permanently lost.
-\code{bar} now resumes and has access to \code{n} and \code{m},
-but not to \code{x} or \code{y}.
+\texttt{bar} now resumes and has access to \texttt{n} and \texttt{m},
+but not to \texttt{x} or \texttt{y}.
 
 You will sometimes have multiple variables (in different parts of your
 code) sharing the same name.
-For instance, you may have both a global variable \code{n} and a local
-variable called \code{n} in a function.
+For instance, you may have both a global variable \texttt{n} and a local
+variable called \texttt{n} in a function.
 Or you could have code like the following:
 
 \begin{verbatim}
@@ -174,7 +158,7 @@ void foo (int n)
 }
 \end{verbatim}
 
-Here, the \code{cout << n << m} statement would output the innermost
+Here, the \texttt{cout << n << m} statement would output the innermost
 versions, so the values 3 and 5.
 As a general rule, when there are multiple variables with the same name,
 any reference is to the one in the smallest code block enclosing the
@@ -204,7 +188,7 @@ the stack\footnote{Technically, this is not quite true. Some modern
   in these notes.}.
 Instead, the program will need to explicitly ask the operating system
 for the right amount of space at run-time. 
-This memory is assigned from the \todef{heap}\footnote{This is called
+This memory is assigned from the \emph{heap}\footnote{This is called
   the heap space since it can be selected from any portion of the
   space that has not been allocated already. While the stack remains
   nicely organized, memory in the heap tends to be more messy and all
@@ -241,10 +225,10 @@ which will be enough for a while.}.
 
 In C/C++, pointer types are declared by placing a star `*' behind a
 regular type name.
-Thus, \code{int *p; char *q; int **b; void *v;} all declare pointers.
+Thus, \texttt{int *p; char *q; int **b; void *v;} all declare pointers.
 In principle, all of these are just addresses of some memory location,
 and C/C++ does not care what is stored at the address.
-Declaring them with a type (such as \code{int}) is mostly for the
+Declaring them with a type (such as \texttt{int}) is mostly for the
 programmer's benefit:
 it often prevents you from messing up the use of the
 data stored in the location.
@@ -277,16 +261,16 @@ q = p;    // Overwrites the pointer p with q, so they now point to the same loca
 
 A few things are worth noting here.
 \begin{enumerate}
-\item The last two commands both result in \code{*p} being equal to
-\code{*q}, but in different ways. In the first case, we copy the
+\item The last two commands both result in \texttt{*p} being equal to
+\texttt{*q}, but in different ways. In the first case, we copy the
 \emph{value} from one location to the other, while in the second, 
 we make both point to the same place.
-This will manifest itself later: if you make a change to \code{*p}
-after writing \code{q = p}, it will also change \code{*q};
-this does not happen if you wrote \code{*q = *p}.
+This will manifest itself later: if you make a change to \texttt{*p}
+after writing \texttt{q = p}, it will also change \texttt{*q};
+this does not happen if you wrote \texttt{*q = *p}.
 \item In our code example, the second-to-last command is very risky,
   and will likely cause a run-time error.
-  The piece of code did not initialize \code{q},
+  The piece of code did not initialize \texttt{q},
   so it points to an arbitrary memory location, quite possibly location 0.
   The code is trying to overwrite this location,
   which most likely the program is not allowed to do.
@@ -295,29 +279,29 @@ this does not happen if you wrote \code{*q = *p}.
     is that your program throws a run-time error. In the past, the OS
     would often allow you to do such an overwrite, in which case often
     some complete system crashes would happen.}.
-\item \code{nullptr}\footnote{\code{nullptr} was introduced in
+\item \texttt{nullptr}\footnote{\texttt{nullptr} was introduced in
     C++11. You will need to use the C++11 flag in order to be able to
     use this keyword. In older versions, the keyword used was
-    \code{NULL}, which still works in later versions.} is a special
+    \texttt{NULL}, which still works in later versions.} is a special
   pointer, typically used to express that a pointer is ``not pointing
   anywhere.'' Of course, it is actually pointing somewhere.
-  \code{nullptr} is basically just another name for the number 0.
+  \texttt{nullptr} is basically just another name for the number 0.
   But since your code should never access memory location 0,
   having this as a ``not initialized'' value is a useful convention.
 \item Our earlier comment about the perils of
   uninitialized pointers suggests that whenever you have a pointer
-  variable, you always assign it \code{nullptr} right away as you declare
-  it. In our example, we did that for \code{p}, but should also have
-  done the same for \code{q}.
+  variable, you always assign it \texttt{nullptr} right away as you declare
+  it. In our example, we did that for \texttt{p}, but should also have
+  done the same for \texttt{q}.
   That way, if you later forget to assign it a memory location before
   dereferencing it, at least, it will cause a crash of your program,
   rather than possibly processing some garbage that it reads from the
   location.
   This is good coding practice to reduce your debug time.
-\item \code{\&} and \code{*} are \emph{inverses} of each other.
-  Thus, \code{\&*p} and \code{*\&p} are the same as \code{p}.
-  (The exception is that \code{\&*p} throws a runtime error when applied
-  to \code{p==nullptr}, instead of being equal to \code{p}.)
+\item \texttt{\&} and \texttt{*} are \emph{inverses} of each other.
+  Thus, \texttt{\&*p} and \texttt{*\&p} are the same as \texttt{p}.
+  (The exception is that \texttt{\&*p} throws a runtime error when applied
+  to \texttt{p==nullptr}, instead of being equal to \texttt{p}.)
 \end{enumerate}
 
 In general, it is quite easy to mess up with pointers.
@@ -327,38 +311,38 @@ errors frequently when dealing with pointers.
 
 \begin{figure}[htb]
 \centering
-\includegraphics[scale=0.6]{comics/xkcd_compiler_complaint.eps}
+\includegraphics[scale=0.6]{assets/xkcd_compiler_complaint.eps}
 \caption{XKCD \# 371: Check your Pointers!}
 \end{figure}
 
 
 We discussed before that pointers are basically just integers.
 They differ in that arithmetic is somewhat different.
-When you have a pointer \code{p} to an \code{int},
-and you write \code{p+1},
+When you have a pointer \texttt{p} to an \texttt{int},
+and you write \texttt{p+1},
 the compiler assumes that what you want is the address
 where the next \emph{integer} will start, which is 4 bytes later.
-Thus, the actual address referenced by writing \code{p+1} is actually
-4 bytes after the address of \code{p}.
+Thus, the actual address referenced by writing \texttt{p+1} is actually
+4 bytes after the address of \texttt{p}.
 
 This is where the type of pointer matters, as we mentioned above. 
-When you have a \code{void*}, then addition really does refer to
+When you have a \texttt{void*}, then addition really does refer to
 adding individual bytes. For all other pointer types, when you write
-\code{p+k} for a pointer \code{p} and integer \code{k}, 
-this references memory location \code{p+k*size(<type>)}, where
-\code{<type>} is the type of the pointer \code{p}.
+\texttt{p+k} for a pointer \texttt{p} and integer \texttt{k}, 
+this references memory location \texttt{p+k*size(<type>)}, where
+\texttt{<type>} is the type of the pointer \texttt{p}.
 
 \section{Dynamic Memory Allocation}
 In order to dynamically allocate and deallocate memory,
-C++ uses the functions \code{new} and \code{delete}.
-They are built on the C functions \code{malloc} and \code{free},
+C++ uses the functions \texttt{new} and \texttt{delete}.
+They are built on the C functions \texttt{malloc} and \texttt{free},
 which you can read about in Section~\ref{sec:dynamic-memory:malloc-free}.
 The C++ versions shield you from some of the internals and will help
 you avoid common mistakes in dealing with dynamic memory.
 
 \subsection{C++ Style}
-In C++, you allocate dynamic memory with \code{new()}
-and deallocate it with \code{delete()}.
+In C++, you allocate dynamic memory with \texttt{new()}
+and deallocate it with \texttt{delete()}.
 Let us look at allocation of memory first.
 To solve our small problem from earlier --- ask the user for an array
 size and allocated that much memory --- we would write the following:
@@ -371,58 +355,58 @@ b = new int[n];
 for (int i=0; i<n; i++)
     cin >> b[i];
 \end{verbatim}
-The desired number of \code{int} spaces in the array is given in
+The desired number of \texttt{int} spaces in the array is given in
 square brackets, as with statically allocated arrays.
 
 If we wanted space for just one integer, we could write
-\code{int *p = new int;}
+\texttt{int *p = new int;}
 While this is not really very useful for a single integer,
 it will become very central to allocating objects later,
 where we often allocate one at a time dynamically.
 
 When you allocate a single object, you can optionally give it a
 default value in parentheses, as follows:
-\code{int *p = new int (42); }
+\texttt{int *p = new int (42); }
 This code dynamically allocates a pointer to an integer,
 and initializes the memory location's value to 42.
 We will see later (in Sections~\ref{sec:classes:constructors} and
 \ref{sec:overloading:copy-constructors}) that this is a special case
 of copy constructors.
 
-Another thing to observe here is that we can reference \code{b} just
-like an array, and we write \code{b[i]}.
-The compiler treats this exactly as \code{*(b+i)}, and, as you
+Another thing to observe here is that we can reference \texttt{b} just
+like an array, and we write \texttt{b[i]}.
+The compiler treats this exactly as \texttt{*(b+i)}, and, as you
 probably remember from the part about pointer arithmetic, this points
-to the \Kth{i} entry of the array.
+to the $k_i$ entry of the array.
 In fact, that's exactly how C/C++ internally treats all arrays anyway;
 basically, they are just pointers.
 
-If we wanted to write \code{b[i]} in a complicated way by doing all
+If we wanted to write \texttt{b[i]} in a complicated way by doing all
 the pointer arithmetic by hand, we could write instead
-\code{*((int*) ((void*) b + i * sizeof(int)))}.
+\texttt{*((int*) ((void*) b + i * sizeof(int)))}.
 Obviously, this is not what we like to type (or have to understand),
 but if you understand everything that happens here, you are probably
 set with your knowledge of pointer arithmetic and casting.
 
 \smallskip
 
-To release memory, we use the \code{delete} operator, as follows:
+To release memory, we use the \texttt{delete} operator, as follows:
 \begin{verbatim}
 delete [] b;
 delete p;
 \end{verbatim}
 The first example deallocates an array,
 while the second deallocates a single instance of a variable
-(a single \code{int} in our earlier example).
+(a single \texttt{int} in our earlier example).
 ``Deallocating'' means that your code tells the operating system that
-it won't need the memory at \code{p} any more, and the operating
+it won't need the memory at \texttt{p} any more, and the operating
 system should feel free to reuse it for other purposes.
 
-Note that \code{delete} does nothing to the pointers \code{b} or
-\code{p} themselves;
+Note that \texttt{delete} does nothing to the pointers \texttt{b} or
+\texttt{p} themselves;
 it only deallocates the memory that they pointed to.
 Thus, it is very good programming practice to immediately set the
-pointer to \code{nullptr} after deallocating the memory it points to;
+pointer to \texttt{nullptr} after deallocating the memory it points to;
 this way, your code will not attempt to tamper with invalid memory.
 
 What could happen otherwise is the following:
@@ -430,7 +414,7 @@ you returned the memory to the operating system, which used it for
 another variable (in your program or maybe another program).
 Now you may accidentally overwrite or read the value that was written
 into this new variable. Such a bug will be very hard to diagnose.
-If you instead set the pointer to \code{nullptr}, you will instead get
+If you instead set the pointer to \texttt{nullptr}, you will instead get
 a runtime error when you try to access the memory,
 which is typically much easier to pin down and debug.
 
@@ -442,37 +426,37 @@ and the C style is closer to the machine level, providing you perhaps
 with a better understanding of what goes on inside your machine.
 
 To allocate memory in C, one uses the function
-\code{void* malloc (unsigned int size)}.
-This function requests \code{size} bytes of memory from the operating
+\texttt{void* malloc (unsigned int size)}.
+This function requests \texttt{size} bytes of memory from the operating
 system, and returns the pointer to that location as a result. 
 If for some reason, the OS failed to allocate the memory
 (e.g., there was not enough memory available),
-\code{nullptr} is returned instead.
+\texttt{nullptr} is returned instead.
 
-The main difference between \code{malloc} and \code{new},
-besides small syntax issues (square brackets for \code{new}
-vs.~parentheses for \code{malloc}), is that when using \code{malloc},
+The main difference between \texttt{malloc} and \texttt{new},
+besides small syntax issues (square brackets for \texttt{new}
+vs.~parentheses for \texttt{malloc}), is that when using \texttt{malloc},
 you have to specify the number of \emph{bytes} you would like,
-whereas with \code{new}, you specify the number of \emph{items} in
+whereas with \texttt{new}, you specify the number of \emph{items} in
 your array. 
 This means that we need a way to figure out how many bytes will be
 required for the number of items we want.
-The way to find this out is the \code{sizeof} function.
-When you write \code{sizeof (t)}, it returns the number of bytes for
-each item of type \code{t};
-for instance, \code{sizeof (int)} will give you the number of bytes in
+The way to find this out is the \texttt{sizeof} function.
+When you write \texttt{sizeof (t)}, it returns the number of bytes for
+each item of type \texttt{t};
+for instance, \texttt{sizeof (int)} will give you the number of bytes in
 an integer.
 Even if you think that you know how many bytes a type will need,
 you should never hard-code that constant, as it may change over time.
 Even if right now, on your current computer, an integer needs 4 bytes,
 that may not be the case forever if you reuse your code later.
 
-Another difference between \code{malloc} and \code{new} is that
-\code{malloc} returns a \code{void*},
+Another difference between \texttt{malloc} and \texttt{new} is that
+\texttt{malloc} returns a \texttt{void*},
 since it does not know what kind of data we want to store at the
 location.
 As a result, we have to cast the pointer to the type that we want in
-the end, for instance, an \code{int *}.
+the end, for instance, an \texttt{int *}.
 Taken together, the code we had earlier is therefore written as:
 
 \begin{verbatim}
@@ -483,14 +467,14 @@ b = (int*) malloc(n * sizeof(int));
 \end{verbatim}
 
 For good coding practice, we should probably also check whether
-\code{b==nullptr} before dereferencing it,
+\texttt{b==nullptr} before dereferencing it,
 but this example is supposed to remain short.
 
 \smallskip
 
-The analogue to \code{delete} in C++ is the function 
-\code{void free (void* pointer)};
-it releases the memory located at \code{pointer} for reusing.
+The analogue to \texttt{delete} in C++ is the function 
+\texttt{void free (void* pointer)};
+it releases the memory located at \texttt{pointer} for reusing.
 So our earlier code for releasing memory would now become
 
 \begin{verbatim}
@@ -498,10 +482,10 @@ free (b);
 free (p);
 \end{verbatim}
 
-Just like \code{delete}, the function \code{free} does not change the
-pointer (\code{b} or \code{p}) and only deallocates the memory.
-So as with \code{delete}, it is good coding practice to set the
-pointers to \code{nullptr} (or, in C, \code{NULL}) after they are
+Just like \texttt{delete}, the function \texttt{free} does not change the
+pointer (\texttt{b} or \texttt{p}) and only deallocates the memory.
+So as with \texttt{delete}, it is good coding practice to set the
+pointers to \texttt{nullptr} (or, in C, \texttt{NULL}) after they are
 deallocated.
 
 
@@ -521,19 +505,19 @@ delete [] x;
 
 This code will compile just fine, and most likely will not crash,
 at least not right away.
-We correctly allocate an array of 100 \code{double},
+We correctly allocate an array of 100 \texttt{double},
 use it for some computation,
-and then allocate an array of 200 \code{double} when we
+and then allocate an array of 200 \texttt{double} when we
 realize that we need more memory.
 
 But notice what happens here.
-The moment we do the second allocation, \code{x} gets overwritten with
+The moment we do the second allocation, \texttt{x} gets overwritten with
 a pointer to the newly allocated memory block.
 At that point, we have no more recollection of the pointer to
 the previous memory block.
 That means we cannot read it, write it, or deallocate it.
 When at the end of the code snippet,
-the program calls \code{delete [] x},
+the program calls \texttt{delete [] x},
 it successfully deallocates the second allocated block,
 but we are unable to tell the operating system that we do not need the
 first block any more. 
@@ -541,18 +525,18 @@ Thus, those 800 bytes will never become available again
 (until our program terminates --- but for all we know, it may run for
 several years as a backend server somewhere).
 
-This kind of situation is called a \todef{memory leak}:
+This kind of situation is called a \emph{memory leak}:
 available memory is slowly leaking out of the system.
 If it goes on long enough, our program may run out of memory and crash
 for that reason. It could be quite hard to diagnose why the crash
 happened if it does after a long time of running.
 
 It is good practice to keep close track of the memory blocks you
-reserve, and make sure to \code{delete} (or \code{free}) memory
+reserve, and make sure to \texttt{delete} (or \texttt{free}) memory
 pointed to by a pointer before reusing the pointer\footnote{There are tools
 for checking your code for memory leaks, and we recommend
 familiarizing yourself with them. The most well-known one, for which
-the course web page contains some links, is called \code{valgrind}.}.
+the course web page contains some links, is called \texttt{valgrind}.}.
 A better version of the code above would be the following:
 
 \begin{verbatim}
@@ -571,22 +555,22 @@ x = nullptr;
 That way, the memory gets released while we still have a pointer to
 it.
 You will recall that it is always good practice to immediately set
-pointers to \code{nullptr} after deallocating their memory.
+pointers to \texttt{nullptr} after deallocating their memory.
 In the middle of the code, that may seem very redundant:
-after all, the example program immediately overwrites \code{x} with
+after all, the example program immediately overwrites \texttt{x} with
 another value. 
 And in fact, here, it \emph{is} completely redundant.
 However, we still recommend that you add the line;
-for example, you may later insert some code between \code{delete [] x}
-and \code{x = new double [200]}, and you might easily insert mistakes there.
+for example, you may later insert some code between \texttt{delete [] x}
+and \texttt{x = new double [200]}, and you might easily insert mistakes there.
 And if you are worried about your program wasting time with
 unnecessary assignments, don't be --- the compiler will almost certainly
 optimize that assignment away anyway, and the final compiled code will look
 exactly the same.
 
 One question you may be wondering about is if we could just free the
-memory by setting \code{x = nullptr;}
-without calling \code{delete [] x} first.
+memory by setting \texttt{x = nullptr;}
+without calling \texttt{delete [] x} first.
 That would only overwrite the pointer, but it would not tell the
 operating system that it can have the memory back.
 In other words, it would exactly \emph{create} a memory leak.
@@ -597,8 +581,8 @@ explicitly\footnote{There are other programming languages that do much
 
 As a side note, if you look up some of this information online or in
 other sources, keep in mind that the pool of memory where you allocate
-variables with \code{new} (or \code{malloc}) is called the
-\todef{memory heap}.
+variables with \texttt{new} (or \texttt{malloc}) is called the
+\emph{memory heap}.
 This is different from a data structure known as the \emph{heap} which
 you will learn about in Chapter~\ref{chap:priority-queues}.
 Unfortunately, people (including us $\ldots$) are not quite consistent
