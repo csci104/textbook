@@ -1,0 +1,679 @@
+Suppose that a friend has coded an integer (or perhaps templated) \code{List}
+class based on linked lists and you want to create a deluxe version of it. 
+The deluxe class \code{DeluxeLinkedList} would do the same thing
+except that it has an \code{isEmpty} function and an upgraded
+version of your friend's \code{print} function.
+There are two natural ways of accomplishing this. 
+\begin{enumerate}
+\item You could just change your friend's code everywhere. But your
+  friend may not like this; perhaps, he/she needed the particular format
+  of printing the list, and you just destroyed his/her code.
+  In particular if you are working on a project together,
+  both versions may be needed at the same time,
+  so it is not just about choosing the ``better'' version.
+\item You could just copy and paste your friend's code and write your own
+  modifications into the copied version. But that also has problems:
+
+\begin{itemize}
+\item There are now two versions of the original code, so changes made
+  to one have to be carefully copied over to the other.
+  In particular, if your friend discovers a bug in his/her code,
+  it now has to be fixed in two places (or more, if you made different versions).
+\item Copying/pasting is very inelegant as a general programming
+  technique.
+\end{itemize}
+\end{enumerate}
+
+Both methods also require you to have access to your friend's complete source
+code in the first place, and not just the compiled object files and headers.
+
+The clean solution to this problem is called \todef{inheritance},
+and it is one of the most central notions of object-oriented design/programming.
+Given a class A, inheritance allows you to define a new class B that
+``inherits'' (automatically copies) all data and functions from A. 
+Further, it allows you to modify and add functions as necessary, and
+overwrite existing functions. The basic syntax is as follows: 
+
+\begin{verbatim}
+class B : public A
+{
+  ...
+}
+
+\end{verbatim}
+This code basically just copy-pastes everything from A into B
+(except what you overwrite).
+The difference is that as soon as something is changed in A,
+the changed version is also used in B,
+so you only need to fix things in one place, and
+--- unless you use templates (which create some problems) ---
+you do not even need access to the implementation of A, just the
+header file and compiled version.
+
+When you use inheritance, the class you are inheriting from (here, A) is
+called the \todef{base class} or \todef{superclass}, while the class
+that is doing the inheriting (here, B) is called the \todef{subclass}.
+
+As far as our thinking is concerned, the code for A is copied into B.
+Therefore, the same rules apply for overloading functions as are in
+effect when you write your own class from scratch:
+you may overload function names so long as the functions have
+different signatures (numbers or types of arguments).
+But, as we will see, you also get to \emph{replace} one function in A
+with another function in B which has the same signature.
+
+Now that you hopefully understand the basics of inheritance, 
+let us build \code{DeluxeLinkedList} by inheriting from
+\code{IntLinkedList}. 
+First, we add a new function to test whether the list is empty:
+
+\begin{verbatim}
+bool DeluxeLinkedList::isEmpty () {
+  return (this->head == nullptr);
+}
+\end{verbatim}
+
+Then, we replace the \code{print} function (which had previously used
+recursion to print the list in reverse order) with the following:
+
+\begin{verbatim}
+void DeluxeLinkedList::print() {
+  for (Item *p = head; p != NULL; p = p->next)
+     std::cout << p->value << " ";
+  std::cout << std::endl;
+}
+\end{verbatim}
+
+In addition, we put the two function headers inside 
+\begin{verbatim}
+class DeluxeLinkedList : public LinkedList
+{
+  public:
+    void print ();
+    bool isempty ();
+}
+\end{verbatim}
+
+When we try to compile this, the compiler will note an error,
+and claim that our \code{DeluxeLinkedList} does not have a variable
+called \code{head}.
+But we inherited from \code{LinkedList},
+which does have a variable called \code{head}!
+
+The problem is that \code{head} is declared as \code{private} in
+\code{LinkedList}. The keyword \code{private} makes the variable
+very restricted: not even an inheriting class gets to access the
+variable (though of course the data item is stored in the class).
+A version that resembles \code{private} but allows all inheriting
+classes to access the variable directly is \code{protected}.
+Here is a summary of who is and is not allowed to access variables or
+functions of a class:
+
+\begin{description}
+\item[public:] everyone (other classes, this class) can access the field.
+\item[private:] only objects of the same class can access the
+  field. One object of class A may access the private fields of
+  another object of class A.
+\item[protected:] only objects of the same or inheriting classes can
+  access the field.
+\end{description}
+
+When we replace the word \code{private} with \code{protected} in the
+definition of \code{LinkedList}, everything works afterwards.
+
+\section{Member Visibility, Multiple Inheritance, and calling Base Class Methods}
+
+Inheritance raises a few interesting issues,
+such as whether subclasses (the inheriting ones) can access methods
+and variables from the superclasses,
+how to inherit from multiple classes,
+and how to explicitly call a member function of the base class when
+you are also overwriting it in the inheriting class.
+We will discuss those here.
+
+\subsection{Inheritance and Visibility}
+You were probably wondering why we were writing 
+\code{class B : public A}; in particular, why we needed the word
+\code{public} here.
+When you have a class B inheriting from A, sometimes, you want to 
+restrict access to variables that were \code{public} in A;
+that is, you want to \emph{make} them \code{private} or
+\code{protected} in B.
+For instance, you may  want to inherit the functionality of a linked
+list to use it, but show the world a different set of functions to
+call, and keep the other ones only for internal use.
+Then, you would want them to become private. 
+To distinguish more precisely what should become private and what
+should remain public, you can inherit in one of three ways:
+
+\begin{description}
+\item[public:] All elements in A have the same protection in B as
+  they had in A, so everything stays as it was.
+\item[protected:] Private elements of A remain private in B, but
+  protected and public elements of A both become protected in B. In
+  other words, the minimum protection level for elements of A is now
+  \code{protected}.
+\item[private:]	All elements of A become private in B.
+\end{description}
+
+So by writing \code{class B : private A} instead, we would ensure that
+whatever B has inherited from A cannot be accessed from any other classes:
+neither those inheriting from B, nor those using objects of type B.
+
+Of course, it is important to remember that even when you inherit
+privately, all variables and functions that were part of A are still
+there in B --- they are just not accessible to the outside world.
+But you may have some functions in B that use variables of A that are
+now private
+As a result, it is still possible to access those now-private
+members indirectly, just not directly.
+
+\subsection{Multiple inheritance}
+
+C++ allows a single class to inherit from multiple classes.
+We strongly advise you to not use this feature, as quite a few things
+can go wrong. For instance, if the two classes you are inheriting from
+have variables or functions of the same name, you get clashes.
+For some discussion, look up ``C++ Diamond of Dread.''
+If you find yourself inheriting from more than one class, it is often
+a sign that you should rethink your program's class structure. 
+
+The most frequent ``legitimate'' use of multiple inheritance is when
+you want to genuinely inherit the functionality of one class, and add
+functions to meet all the specs of a pure abstract class.
+(We will talk about pure abstract classes momentarily.)
+Then, from the second class, you really do not ``inherit'' per se,
+but you just implement the functions that that class wants. 
+Unfortunately, in C++, the only way to do that is multiple
+inheritance. 
+
+In other more naturally object-oriented languages (such as Java),
+purely abstract classes which specify functions you would like to see
+in your class are distinguished from actual classes;
+in Java, they are called \todef{Interface}.
+Then, you can say that your class \todef{inherits} one class,
+and \todef{implements} another interface.
+Unfortunately, C++ does not have a mechanism for this, so sometimes,
+you are stuck with multiple inheritance.
+
+\subsection{Calling Base Class Methods}
+We overwrote the \code{print} function in our implementation of the
+\code{DeluxeLinkedList} class. What happens if someone actually wanted
+to call the \code{LinkedList} version of \code{print}?
+For instance, suppose that instead of printing the elements in correct order,
+we still wanted to stick with the reverse order of \code{LinkedList},
+but we wanted to print a message before and after.
+C++ allows you to do that, by explicitly putting the name of the class
+in front of a call.
+Generally, to call a function belonging to class A, you would write
+\begin{verbatim}
+  A::functionName(parameters);
+\end{verbatim}
+
+So specifically for the \code{print} function implementation, we would
+write
+\begin{verbatim}
+DeluxeLinkedList::print () {
+  std::cout << "This is the deluxe version of print\n";
+  std::cout << "***********************************\n";
+  LinkedList::print ();
+  std::cout << "***********************************\n";
+}
+\end{verbatim}
+Notice that the \code{print()} function does not recursively call
+itself, as it calls the other version.
+Of course, if we did not add a function of the same name
+(as we did with \code{print} here),
+we could leave out the \code{A::} part,
+and just call it as \code{functionName(parameter)},
+since the function is inherited, and part of our new class B.
+
+\section{Class Relationships}
+When you build a large project, you will often have objects of dozens,
+or even hundreds, of different classes interacting in different ways.
+While at first this may seem overwhelming, if you define your class
+hierarchies and relationships carefully,
+it actually helps you organize and understand the way your code works,
+compared to just writing thousands of lines of code without much structure.
+Forming high-level conceptual ideas about how your project is
+organized can be really helpful.
+
+The following three are very standard relationships between classes.%
+\footnote{There is much more to learn along these lines:
+  a topic called ``design patterns'' explores many different standard
+  patterns in which classes interact.
+  We will see several simple examples later in this class,
+  including Iterators in Chapter~\ref{chap:iterators}.
+  In the context of Qt and event-based programming, discussed in
+  Chapter~\ref{chap:qt}, you also get interesting interaction patterns
+  between classes.}
+
+\begin{description}
+\item[Is-A:] We say that B \todef{is a(n)} A if B is a more specific
+version of A; B has all the functionality of A and then some more. 
+For instance, every cat \emph{is a} mammal: it has all the abilities
+of a generic mammal, plus many cat-specific ones.
+
+When you write code, \emph{is a} relationships are typically
+implemented by using public inheritance: you want all the
+functionality of A to remain available,
+while adding more functions or data to B.
+
+\item[As-A:] B \todef{as a(n)} A refers to implementing a class B using
+  the functionality of A. B will typically look like something
+  completely different to the outside world, but internally, it is
+  implemented by using just A's functionality.
+For instance, when you sleep on someone's couch,
+you are implementing the functionality of ``bed'' using a ``couch''.
+(You implement ``bed'' \emph{as a} ``couch''
+--- even though that is the opposite as you would refer
+to it with the verb ``use''.)
+If instead, you sit on the couch, you may be implementing the
+functionality of ``chair'' using a ``couch''. 
+
+When you write code, \emph{as a} relationships are typically
+implemented by using protected or private inheritance:
+you do not want other classes to see the underlying functionality;
+instead, all you want to expose to whoever uses your class is the new
+parts you are implementing.
+In the examples above, that would be ``bed'' or ``chair;''
+the fact that a ``couch'' was used internally should/will not be visible.
+
+\item[Has-A] B \todef{has a(n)} A if one of the fields of B is of type A. 
+For instance, your car probably \emph{has a} radio.
+That does not mean that your car itself has a function ``switch station,''
+but that it contains an object which itself has that function.
+
+\emph{Has a} relationships require no inheritance;
+they simply involve creating a member variable of type A in B. 
+\end{description}
+
+The boundaries between \emph{has a} and \emph{as a} can be pretty
+fluid, and sometimes, it makes sense to think about solving a
+particular design issue in either way. 
+For instance, are we implementing a \code{Map} \emph{as a}
+\code{List}, or does a Map \emph{contain} a List?
+In implementing it, one can often use these two nearly
+interchangably.
+This distinction tends to give students a bit of trouble,
+so make sure you understand it.
+
+\section{Static vs.~Dynamic Binding}
+We saw that when one class \code{B} inherits from another class \code{A},
+it can overwrite/replace some of the functions that already existed in
+\code{A}.
+For instance, our \code{DeluxLinkedList} inherited from the more basic
+\code{LinkedList},
+and we changed the \code{print} function from one to the other.
+
+One of the nice things that (public) inheritance does for us is that when
+\code{B} inherits from \code{A},
+then each object of type \code{B} has all the functionality of an
+object of type \code{A}.
+Therefore, we can assign objects of type \code{B} into variables of
+type \code{A}.
+In other words, for our example of \code{DeluxeLinkedList}
+inheriting from \code{LinkedList},
+the following would be valid code:
+
+\begin{figure}[htb]
+\begin{verbatim}
+    LinkedList *p;
+    DeluxeLinkedList *q = new DeluxeLinkedList ();
+    p = q;
+    p->print();
+\end{verbatim}    
+\caption{Which version of \code{print} is called? \label{code:InheritingLinkedList}}
+\end{figure}
+
+Because by our inheritance, every \code{DeluxeLinkedList} is-a
+\code{LinkedList}, we can assign objects of type
+\code{DeluxeLinkedList} into variables of type \code{LinkedList}.
+And because objects of type \code{LinkedList} have a
+\code{print} function, we can call it.
+
+Notice that this assignment only works in this direction:
+assigning a more specific object to a less specific variable.
+This way, we can be sure that the actual object has all of the
+required functionality.
+It does not work the other way around.
+Think about a real-world example:
+we have one class ``human'' and one class ``student,''
+which inherits from ``human.''
+Every student has all the abilities of a generic human,
+plus some extra ones.
+When you need a human for a particular task (e.g., ``donate blood''),
+you can just substitute a student if you want.
+But when you need a student (e.g., for ``take exam''),
+you cannot substitute just any human,
+since they may not be of the right type to
+know how to execute the necessary functions. 
+
+What we just discussed works only for \todef[inheritance]{public} inheritance. 
+If a class inherits from another privately or protectedly,
+it does not have the same methods and variables visible,
+so you may not be able to use it.
+For instance, if you were planning to use your ``couch'' for sitting on it,
+and you implemented ``bed'' as-a ``couch,'' then the bed is not
+helpful:
+by hiding the ``couch'' functionality,
+it cannot be used as a couch any more.
+
+Now that we know that we can use a \code{DeluxeLinkedList} anywhere
+that a \code{LinkedList} has been called for,
+the following question arises:
+since \code{DeluxeLinkedList} and \code{LinkedList}  both
+implement different versions of a \code{print} function,
+which one is called in the last line?
+We could try out two arguments:
+\begin{enumerate}
+\item The compiler knows that \code{p} points to an object of type
+  \code{LinkedList}. It cannot really figure out by code
+  analysis that it so happens that this time (not even always),
+  \code{p} points to an object that is actually of type
+  \code{DeluxeLinkedList}. 
+  So the call must be to the version of \code{print} defined in \code{LinkedList}.
+\item While the compiler does not know at compile time what exactly
+  \code{p} points to, when it comes time to actually \emph{call} a
+  function (during execution), it must know the precise object that is
+  pointed to by \code{p},
+  and it so happens to be of type \code{DeluxeLinkedList}. 
+  Therefore, the call will be to the version of \code{print} defined in
+  \code{DeluxeLinkedList}.
+\end{enumerate}
+
+It turns out that both are by themselves valid arguments.
+The first version is the default.
+If you do not put any additional instructions in the code,
+C++ will call the version of the function corresponding
+to the declared type of the variable you are using.
+This is called \todef{static binding}.
+
+But sometimes, you would really like the second option to happen
+--- you will see some examples in a moment.
+You can tell the compiler to do this,
+by declaring the \code{print} function to be \todef[function]{virtual}.
+You do this by just adding the word \code{virtual} in the definition of
+the function (both in the parent and child class), as follows:
+\begin{verbatim}
+class LinkedList {
+   ...
+   virtual void print ();
+   ...
+}
+\end{verbatim}
+
+The keyword \code{virtual} tells the compiler to not try to figure out
+at compile time which version of the function to call,
+but leave that decision until runtime,
+when it knows precisely the type of the object.
+This process --- figuring out which version of the function to
+call at runtime --- is called \todef{dynamic binding},
+as opposed to \todef{static binding},
+which is when the compiler figures out at
+compile time which version to call.
+
+\section{Pure virtual functions and abstract classes}
+Sometimes, you want to declare a function in a class, but not implement
+it at all; you will see in a moment why.
+Such a function is called a \todef{pure virtual function}.
+The declaration lives entirely in the base classes' header files,
+and you do not need to care about it at all in the implementation files.
+The syntax is 
+
+\begin{verbatim}
+class A {
+  public:
+  virtual void print() = 0;
+}
+\end{verbatim}
+
+The \code{= 0} part tells the compiler that the class does not
+implement this function.
+Of course, if a class has one or more pure virtual functions in it,
+the class cannot be instantiated.
+Such a class is called an \todef{abstract class}.
+No object can be created from an abstract class.
+After all, if we could create objects,
+then what would code like the following do?
+
+\begin{verbatim}
+A obj;
+obj.print();
+\end{verbatim}
+What code should be executed when the execution gets to \code{obj->print()}?
+There is no function to call.
+But if you can never instantiate an abstract class,
+why would there ever be any reason to even define one?
+
+\subsection{Why and how to use pure virtual functions}
+The main reason to create pure virtual functions is to force
+inheriting classes to implement a function.
+For instance, in the example above, if we later implement classes
+\code{B} and \code{C} which inherit from \code{A},
+we have forced both of them to provide a \code{print()} function.
+So we can safely call the \code{print()} function on them.
+
+Pure virtual functions and abstract classes are very useful in
+structuring one's classes,
+and in avoiding code (and error) duplication.
+For a standard example, imagine that you are developing a graphics
+program that lets you draw basic shapes.
+Since all graphics objects (rectangles, circles, polygons, etc.)
+share some properties (such as perhaps color, line width, line style,
+and a few others)
+and maybe also some functionality,
+you may want to define a general class
+\code{GraphicsObject} which captures those.
+You also want each of these objects to provide some functions, such as
+perhaps \code{draw} (drawing itself), \code{resize}, or others.
+But absent a specific definition of an object type (e.g., circle), you
+cannot implement these functions yet.
+Yet, you want to force all \code{GraphicsObject} objects you later
+define to provide these functions,
+so that you can put them all in one big array and process them the
+same way.
+In other words, you would like to do something like the following:
+\begin{verbatim}
+  List<GraphicsObject> allMyObjects;
+  // code that loads a bunch of different objects into the list.
+  for (int i = 0; i < allMyObject.size(); i ++)
+     allMyObjects[i].draw();
+\end{verbatim}
+Even though \code{allMyObjects} may contain many different types of
+graphics objects, so long as all of them inherit from
+\code{GraphicsObject}, and thus have to implement a \code{draw()}
+function, the code shown above will work perfectly fine.
+
+The way to achieve this is to declare pure virtual functions
+\code{draw()}, \code{resize()}, and whatever other functions you want.
+Now, all classes you define later (like \code{Circle},
+\code{Rectangle}, \code{Polygon}, etc.) that inherit from 
+\code{GraphicsObject} must implement this function in order to have
+objects generated from them.
+
+Abstract classes are also very useful to specify an abstract data
+type, and separate its functionality from its implementation.
+After all, we have said before that an abstract data type is
+characterized by the functions it supports, and there may be many ways
+to implement them.
+For example, a while back, we specified the ADT \code{Set},
+which looks as follows when written as an abstract class.
+(Say we are interested in sets of integers.)
+
+\begin{verbatim}
+class Set {
+  public :
+     virtual void add (int item) = 0;
+     virtual void remove (int item) = 0;
+     virtual bool contains (int item) const = 0;
+}
+\end{verbatim}
+
+The preceding piece of code only says that any class that wants to
+implement a \code{Set} must provide these functions.
+Another programmer can then create, say, a \code{LinkedListSet}, an
+\code{ArraySet}, a \code{VectorSet}, etc.
+All of these classes would inherit from \code{Set} and implement the
+functions, though they could do so in very different ways.
+By inheriting from the abstract class \code{Set}, these other classes
+have made sure to be very easily interchanged, as follows:
+
+\begin{verbatim}
+   Set * p;
+   p = new LinkedListSet();
+   ... // some time later
+   delete p;
+   p = new ArraySet();
+\end{verbatim}
+Using dynamic binding here (indicated by the \code{virtual} keyword),
+the code has no problem calling the right version of each function,
+and we can use different implementations interchangeably.
+
+What would happen if we tried to define something
+like a non-virtual unimplemented function?
+\begin{verbatim}
+  void add (int n) = 0;
+\end{verbatim}
+This results in an error. There is no point in having a non-virtual
+non-defined function. If it is not defined, it cannot be called.
+And if it is not virtual, then when it is overwritten later, the compiler
+cannot figure out to call the overwriting version, unless the object is
+already of type \code{B}, in which case there is no need for inheriting.
+
+\medskip
+
+Another classic reason for using pure virtual functions is that we can 
+often avoid rewriting very similar code.
+For instance, imagine that we are implementing an abstract data type
+(say, \code{List}),
+and focus on variants of the \code{insert} function. 
+In addition to the basic \code{insert} version, you want to provide
+several special functions, like \code{pushback} (which inserts at the
+end), \code{pushfront} (which inserts at the beginning), and maye also
+others.
+
+Since the additional functions like \code{pushback} can be described
+in terms of \code{insert}, you could write code like the following: 
+
+\begin{verbatim}
+class IncompleteList {
+    public:
+       void pushback (int item);
+       void pushfront (int item);
+       void insert (int n, int item) = 0;
+}
+\end{verbatim}
+
+You could then implement the \code{pushback} and \code{pushfront}
+functions once and for all, and reuse the code in this way. 
+Something like the following:
+
+\begin{verbatim}
+IncompleteList::pushback (int item) {
+  insert (size(), item);
+}
+
+IncompleteList::pushfront (int item) {
+  insert (0, item);
+}
+\end{verbatim}
+Then, our \code{LinkedList} and \code{ArrayList} and
+\code{VectorList} would not have to implement each of the functions
+\code{pushback}, \code{pushfront}, from scratch, but would just
+need to provide the missing piece \code{insert}.
+Because the \code{insert} function is virtual,
+whenever in the course of executing \code{pushfront},
+the program runs into \code{insert},
+it determines at runtime which version of \code{insert} to call. 
+
+This concept --- determining which version of a class member function
+to call at runtime --- is called \todef{polymorphism}, which literally
+means ``many forms:'' the object stored in a variable could be of one of
+many forms, and the execution will do ``the right thing'' for the
+current object.
+
+\section{Constructors and Destructors with Inheritance}
+
+Suppose that you have a class B which is inheriting from A. What
+happens when you write something like the following piece of code?
+
+\begin{verbatim}
+B *myB = new B ();
+\end{verbatim}
+
+First, appropriate space is reserved on the heap for the object of
+type B. But then, a constructor needs to be called. You will clearly
+want to call a constructor for B; in the given code, it will be the
+default constructor.
+But if A has some private variables (which B inherits),
+how will they get initialized?
+The answer is that \emph{before} the constructor of the class B is
+called, C++ calls a constructor for the class A.
+If you do not explicitly specify which constructor for A to call,
+C++ will substitute the default constructor.
+If you want to call another constructor, you have to say so explicitly.
+
+Here is how you do this.
+Suppose that A has a constructor that passes a \code{string} as a parameter.
+For B, you want to implement a constructor that gets a \code{string}
+and an \code{int}, and uses A's constructor with a string.
+You would write code like the following:
+
+\begin{verbatim}
+class B : public A {
+  public:
+    B (string s, int n) : A (s)
+     { rest of the code here }
+}
+\end{verbatim}
+
+% edited up to here
+
+After the name of the constructor, you put a colon and then the
+constructor you want to call from the superclass.
+Again: it is important to remember that C++ always calls constructors
+for all superclasses before the constructor for the class itself.
+
+How about destructors? The same argument suggests that in addition to
+the destructor for B, we will also need to call the destructor for A
+at some point. After all, A may have dynamically allocated memory for
+a private variable, and the only way to safely deallocate it is to
+have A's destructor take care of it.
+
+Calls to destructors happen in the reverse order of constructors. That
+is, first the destructor of B is called, and then the destructor of
+A. This makes sense, since B's stuff is built ``on top of'' A: so we
+need to cleanly remove B's stuff first before it is safe to remove the
+stuff from A.
+
+For destructors, since classes only have one (with no parameters), you
+don't have to worry about explicitly calling one or the other. C++
+takes care of the destructor call chain for you; all you need to do is
+be aware of it, and not destroy in the destructor of B any data that
+you will then again attempt to destroy in A. 
+
+However, something that you should \emph{always} do whenever you have
+classes that are inheriting or being inherited from is making the
+destructors \code{virtual}. This is very important for the following
+reason. Look back at our example in
+Figure~\ref{code:InheritingLinkedList}. When we call
+\code{delete p}, which destructor is supposed to be called?
+Clearly, since we have an object of type \code{DeluxeLinkedList}, it
+may have extra data, so it would be important to call its
+destructor. But if the destructor is not virtual, then C++ can only go
+by the ``official'' type of \code{p}, which is \code{LinkedList}. It
+would call the wrong destructor, which may result in a memory leak or
+worse. For that reason, any class that has any chance of being
+inherited from, and any class that inherits from another, should make
+the destructor virtual.
+
+As a general rule for both constructors and destructors, the
+constructor and destructor of inheriting classes should take care of
+the additional issues for their own class, but leave the other parts
+to the superclass.
+
+Also notice that if you have an abstract class, you do not need to
+implement any constructors or destructors for it --- in particular,
+for a pure abstract class, it makes no sense to build constructors or
+destructors.

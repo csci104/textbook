@@ -1,0 +1,267 @@
+Throughout the semester, as you have learned about object-oriented
+design, we have emphasized that its main benefit is the ability to
+cleanly reuse code later, by separating out functionalities and
+putting them where they belong, and by isolating interfaces
+(\emph{what} functions a class provides) from implementations
+(\emph{how} they are performed). Along the way, in addition to
+inheritance as a natural extension mechanism, we have also seen more
+interesting ways in which objects from different classes can interact,
+each taking specific roles and responsibilities within a larger task,
+and interacting with each other in pre-specified ways.
+
+Perhaps the two most non-trivial ones were the \todef{Iterator}
+paradigm (discussed in Chapter~\ref{chap:iterators}) and the
+interaction between slots and signals in Qt in Chapter~\ref{chap:qt}.
+These are examples of \todef{design patterns}: ways in which objects
+can interact with each other that occur with at least some regularity,
+and which --- when considered in the design of your class structure
+--- will make it easier later to extend and reuse your code.
+Design patterns are one of many important aspects of the broad field
+of Software Engineering, and you will learn about them a little more,
+and Software Engineering a lot more, whenever you take CSCI 201 and,
+more importantly, the Software Engineering class CSCI 310.
+For now, to show you a little more how to think about classes and
+their interactions, we will discuss a few common design patterns.
+Some of them are obvious, some are pretty clever, some are just
+workarounds for weaknesses in the C++ or Java programming
+languages. There are many more than we discuss here --- this is just
+to give you a little taste.
+For the student interested in learning more, we recommend the classic
+book on ``Design Patterns'' by Gamma, Helm, Johnson, and Vlissides, as
+well as many online sources.
+
+\section{Observer}
+The \todef{observer} paradigm is something that we already saw in
+action when we talked about Qt, and how slots in one class correspond
+to signals in another. More generally, the observer design pattern
+applies when you have one object that has some state (which may
+change, e.g., because the user enters values), and other objects which
+need to be kept informed about any changes in the first object, e.g.,
+because they display the content of the object.
+
+The classic example is something like a table of data as the first
+object, and several ways of displaying it. For instance, you may have
+a table of student grades, and display it as a histogram, pie chart,
+and in table format. How many and which kinds of displays are open
+will depend on the user's actions, so you can't predict ahead of time
+how many observers the object will have. In fact, you shouldn't
+hardwire too much what possible displays there are: perhaps in version
+3 of your software, you'll also want to introduce 3-D charts and a
+display with a function plot. At that point, you'd like to simply say
+that there are now additional ways of displaying the data, without
+having to change the class for the actual table.
+
+The way to separate out the functionality of storing the data and
+displaying it, and allow the easy creation of new ways of displaying,
+is by providing particular interfaces:
+
+\begin{enumerate}
+\item The class for your data table has a way for observers to
+  register themselves, such as \code{void Table::register (Observer *obs)}.
+  When this is called, the table adds \code{obs} to a list of
+  registered observers.
+\item The class for the displays has a way to be notified of changes,
+  such as \code{void Observer::notify (Table *tab)}.
+  Whenever anything changes in the table, it calls the \code{notify}
+  function for all its observers, passing itself as an argument.
+  Then, the observers will know how to update the way they display (or
+  otherwise interact with) the data from the table.
+  Of course, the \code{Table} class will have to provide an interface
+  for the observer to actually get the data.
+\end{enumerate}
+
+When this design pattern is followed, you can later add different ways
+to display the data, without ever changing a line of code in the
+\code{Table} class. You simply write a new class inheriting from
+\code{Observer}, and implementing the \code{notify} function
+accurately.
+
+This paradigm is also called \todef{publish-subscribe}: one object
+provides an interface for subscribing to updates, and the other has an
+interface for being notified of updates. When you subscribe to a
+mailing list that informs you of the upcoming concerts of your
+favorite band, you follow the same paradigm: the band doesn't need
+to know ahead of time who will be the subscribers: all it does is provide a
+way to put yourself on the mailing list. In turn, you provide an
+interface by giving an e-mail address, which is a standardized way for
+the band to update you on its status changes. The way you process
+those status updates (buy concert tickets, visit the web site, tell
+your friends, be disappointed because you can't go, etc.) is then up to you.
+
+\section{Visitor}
+Suppose that you have written a parser for mathematical formulas (as
+you did, for instance, on a homework). The best way to represent a
+parsed formula is via its \todef{parse tree}. For instance, the parse
+tree for the formula ``$2*(x+4)$'' would be represented as in
+Figure~\ref{fig:parse-tree}. 
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,tpos=0.4,arrowsize=0.1 3}
+\begin{pspicture}(0,-4)(0,0.5)
+\pstree{\Tcircle{*}}
+        {
+	 \Tcircle{2}
+         \pstree{\Tcircle{+}}
+                {
+                 \Tcircle{x}
+                 \Tcircle{4}
+                }
+        }
+\end{pspicture}
+\caption{The parse tree for ``$2*(x+4)$''. \label{fig:parse-tree}}
+\end{center}
+\end{figure}
+
+Once you have this tree representation, a lot of things can be done
+quite easily using DFS tree traversal (pre-order, in-order, or
+post-order), such as:
+\begin{itemize}
+\item Printing the expression in a nicely formatted way.
+\item Evaluating the expression at a particular value of $x$ (which in
+  turn could be used to plot the function).
+\item Substituting a different expression for $x$, e.g., $x=y^2+3$.
+\end{itemize}
+You can likely come up with quite a few others. 
+
+The question is where the functions \code{string prettyPrint ()},
+\code{double evaluate (double x)} or \code{ParseTree *substitute (char
+  variableName, ParseTree *expressionToSubstitute)} should reside.
+Clearly, the most natural fit is as member function of the class
+\code{ParseTree}. But that doesn't feel quite right. 
+For starters, the tree should mostly store the data, but it's not
+really its job to print it. More severely, what if another user wants
+to print the tree in a different format? By now, you know that you
+wouldn't want that person to have to go in and change your code for
+printing. 
+
+The only other apparent solution is to give global access of all
+relevant internals in your \code{ParseTree} to the outside world,
+i.e., make almost everything global. But that is bad coding style, as
+it reveals too much about the implementation, and doesn't allow you to
+later rename variables or similar things.
+
+Upon some reflection, this conundrum looks quite similar to what we
+solved by using the \todef{Iterator} design pattern for container
+classes (Chapter~\ref{chap:iterators}). 
+It allowed us to access the elements of the container in a
+structured and limited fashion. But upon further reflection, an
+iterator is not quite enough here. 
+Iterators simply spit out the elements of the container in some
+pre-defined order. When we want to pretty-print the expression, we
+need to see elements in an in-order traversal. When we want to
+evaluate it, we need to traverse the tree post-order, and more
+importantly, know about the structure.
+And when substituting an expression, we actually need to change the
+tree structure.
+
+So whatever we come up with needs to allow more access than an
+iterator. The \todef{Visitor} paradigm provides a particular interface
+with which other objects can access the contents of nodes of the tree,
+such as following the left/right subtrees, or learning (and possibly
+replacing) what is stored at a node. This is like a compromise: the
+contents aren't really global, but rather, the way in which other
+objects can see what's in the tree and interact with it is carefully
+planned out. 
+
+One can conform to these interfaces and at the same time write a large
+number of different visitors which perform different functions.
+Importantly, one can later change what exactly visitors do, or write
+new ones, without changing the underlying \code{ParseTree} class.
+
+\section{Factory}
+Suppose that you are writing an office suite, which will comprise a
+text editor, spread sheet, database, graphics program, and a few
+others. You will want many of the user interface components to be the
+same, both because you want the look-and-feel to be integrated for
+your users, and because you want to reuse code and save some work.
+One of the dialogs that you'll surely want is to create a new
+document. Since this may entail quite a bit (asking the user,
+generating a default file, opening it, etc.), you may intend to put
+all of this into an object in charge of creating the document.
+The problem is that the \code{generateDocument} function may have to
+return different types of documents, based on what you are currently
+creating: a new \code{TextDocument}, \code{SpreadsheetDocument},
+\code{DatabaseDocument} or \code{GraphicsDocument}. So there will
+definitely be differences between the classes you use for generating a
+document, yet perhaps 90\% will be the same.
+
+The solution is to use the \todef{Factory} design pattern. You define
+an abstract class \code{Document}, from which all your types of
+document will inherit. You also define an abstract class
+\code{Factory}, which implements all of the common functions, and has
+a virtual function \code{Document *generateDocument ()}.
+Then, you can inherit from \code{Factory} to produce new classes
+\code{TextFactory}, \code{SpreadsheetFactory}, \code{DatabaseFactory},
+and \code{GraphicsFactory}. Each overwrites the virtual function
+\code{generateDocument ()} to return the specific type of document you
+want in this instance. For instance, you can now write the following
+code:
+
+\begin{verbatim}
+Factory *factory = new TextFactory ();
+Document *doc = factory->generateDocument ();
+\end{verbatim}
+
+This will ensure that \code{doc} contains (or rather, points to) a
+\code{TextDocument} object afterwards. As you can see, you will need
+to change very little in order to make this generate
+\code{SpreadsheetDocument} objects instead.
+
+So to summarize, the idea of the \todef{Factory} design pattern is that
+you have an abstract \code{Factory} class, whose job it is to produce
+objects that your program needs. By inheriting from this abstract
+class, you produce different concrete factories, each of which produce
+the objects of the specific type you need. All of the specific types
+are subtypes of the abstract type that your abstract factory
+produces. This way, the factories can reuse a lot of code, even though
+they produce different types of objects. It also makes the code very
+extensible: if later on, you decide that your office suite will have a
+sound processing component, you can just define one new class of
+\code{Factory}, and leave almost everything else the same.
+
+\section{Adapter/Wrapper}
+Suppose that you were working on a project with a friend, and needed a
+Hashtable programmed from scratch. You asked your friend to have a
+function \code{insert(const KeyType \& key, const ValueType \& value)},
+but unfortunately, he wasn't paying attention, and instead called the
+function \code{add (const Pair<KeyType, ValueType> \& toAdd)}.
+In your code, you have a lot of references to \code{insert}, but your
+friend has also used his class extensively already, and has a lot of
+references to \code{add}. What to do?
+
+Because there are many references to \code{add} in your friend's code,
+you can't just change the name of the function. And if you've written
+enough code (or there are other people on the team who were also
+relying on this specification), you shouldn't just replace all
+occurrences. A simple and obvious solution is to use an
+\todef{adapter}: a class that provides the user interface you wanted,
+and internally just translates it to what you have. Here is how you
+could do that:
+
+\begin{verbatim}
+class HashtableAdapter : private FriendsHashtable { 
+   // use private/protected inheritance or member element of type FriendsHashtable
+
+  void insert (const KeyType & key, const ValueType & value)
+     { this->add (Pair (key, value)); }
+
+  // identical copies of other functions
+};
+\end{verbatim}
+
+By doing this, you avoid having to rewrite everything, and can reuse
+your friend's code as though it were using the interface you actually
+need.
+
+Remember that you saw the word \emph{adapter} before? When we talked
+about C++ STL classes implementing standard data structures
+(Chapter~\ref{chap:STL}), we mentioned that it has a few adapter
+classes, \code{Queue} and \code{Stack}. They are called that because
+they just put a different interface on the \code{vector} class. 
+Instead of writing \code{v.insert (v.size(),item)}, you can
+write \code{v.push (item)}. So in that sense, STL considers
+\code{queue} and \code{stack} simply adapters put on top of the
+\code{vector} class. Of course, from a data structures viewpoint, they
+are very different, but in terms of implementation, they follow the
+\todef{Adapter} design pattern.

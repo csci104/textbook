@@ -1,0 +1,492 @@
+Earlier in class, we have seen two simple structures that manage access
+to shared resources: queues and stacks. Stacks access the data in a
+LIFO (last-in-first-out) order, in contrast to the FIFO
+(first-in-first-out) order in queues. 
+In the real world, we often employ queues to achieve some notion of
+fairness, because we feel it is right to first serve those who arrived
+first. Examples include:
+\begin{enumerate}
+\item A line at a restaurant or grocery store. 
+  When customers arrive, we want to be
+  fair to them, so we serve them in the order in which they arrive. 
+\item An operating system. Often, when the operating system is
+running, there are different programs that need access to the same
+resources (memory, processor, printer, $\ldots$). Perhaps, they should
+receive access in the order in which they requested it.
+\end{enumerate}
+
+These queues process items in the exact arrival order, and do not
+naturally include different priorities.
+For instance, a restaurant may want to give priority to customers who
+have made a reservation.
+The operating system should grant higher priority to the code for
+handling inputs from mouse and keyboard, as opposed to some
+long-running scientific calculation.
+Additional examples would include the following:
+\begin{itemize}
+\item Airport landing rights. Planes that are at risk of running out
+  of fuel or are having emergencies should have high priority for
+  landing. Planes that are ahead of their scheduled time might be
+  given lower priority.
+\item Emergency room access in a hospital. While in general, patients
+  should perhaps be processed in order of arrival, patients in dire
+  need of medical attention (gunshot victim? heart attack?) should be
+  given priority over broken legs or high fever.
+\end{itemize}
+
+So we would like a data structure that supports more flexibility,
+namely, assigning priorities to items, and processing in order of
+priority, while adding and removing items.
+
+\section{Abstract Data Type: Priority Queue}
+The \todef{priority queue} is a data type supporting exactly these
+types of operations. The key abilities are:
+\begin{enumerate}
+\item Adding an item (with a priority).
+\item Returning the item of highest priority currently stored.
+\item Deleting the item of highest priority from the queue.
+(If there are ties for highest priority, then the returned and deleted
+item should be the same.)
+\end{enumerate}
+Notice that there is deliberately no way to return or delete any item
+other than the one of highest priority.
+Priority queues serve a particular purpose, which is to process items
+by priority; for this goal, access to other elements is not necessary.
+This is just like for queues and stacks, where we could only access or
+remove one particular item at a time.
+
+In order to find the item of highest priority, we need to be able to
+compare the priorities of two items, both of the type \code{T} stored
+in the priority queue. 
+There are (at least) two natural ways of implementing this comparison.
+
+\begin{enumerate}
+\item The data type \code{T} itself allows comparison of priorities of
+  objects, e.g., by overloading the comparison operators. 
+  Thus, for any two objects \code{T a, b}, we can directly test if
+  \code{a < b}, which returns a comparison of their priorities. 
+  Thus, priority is stored \emph{inside} the object.
+\item Priorities are kept separately, for instance as integers. 
+  Then, when we add a new item to the priority queue, we also need to
+  tell the priority queue what the item's priority is.
+  Then, the queue needs to store two things for each item: 
+  \code{T data}, and \code{int priority}. 
+  Through this approach, the priority is determined only when the item
+  is inserted.
+\end{enumerate}
+
+The first method is perhaps easier to implement, but the second might be
+more flexible. In particular, if you want to have the same items have
+different priorities based on the context (imagine people who will
+both visit an emergency room and go to a restaurant, with or without
+reservation), the priority cannot be an inherent property of the item
+itself.
+
+For the purpose of these lecture notes, to keep notation simple and
+focus on the essentials, we will present the abstract data type under
+the first approach, i.e., we assume that \code{T} overloads the
+comparison operators. In practice, the second approach is perhaps a
+better choice.\footnote{Another approach, probably even better, is to
+  implement a separate comparison function on 
+  objects of type \code{T}, and pass that into your data structure at
+  initialization. This can be done by passing either a pointer to your
+  comparison function, or a Comaprator object.}
+Now that we have discussed how objects are compared, we can formalize
+the functions that the ADT Priority Queue should support:
+
+\begin{verbatim}
+template <class T>
+class PriorityQueue {
+    void add (const T & item); // adds an item to the priority queue
+    T peek() const;            // returns the highest priority item
+    void remove();             // removes the highest priority item
+    bool isEmpty();            // determines if the priority queue is empty
+    void changePriority (T & data); 
+             // changes the priority of an item.
+             // The textbook does not include this, but it can be very
+             // useful in many applications, as we will see later
+}
+\end{verbatim}
+
+Above, we discussed landing rights, hospital room emergencies, and
+operating systems as some application areas of priority queues. 
+Truth be told, computer scientists are rarely called upon to implement
+hospital admissions systems; and even in operating systems, it is not
+particularly important to have the best data structures for dealing
+with the priorities of processes --- there just aren't that many of
+them.
+
+The true reason to study priority queues is for their role in search
+algorithms, which are the key part of much of the work in Artificial
+Intelligence and such applications as route planning.
+Building an AI (for many games) often involves exploring a state
+space (for a game, this could be the positions where all pieces or
+characters are located, their individual status, etc.).
+Some states are good, some are bad, and we we would like to find a way
+to get from the current state to a good one. Since there is usually a
+huge number of states, exploring them in an intelligent order is
+crucial --- this is what algorithms like $A^*$ search and Dijkstra's
+Algorithm do. They assign numerical values to states, and always next
+explore the most promising one. From that state, several new states
+may be discovered, and they need to be considered for exploration,
+depending on their priority.
+
+This application also suggests why a function \code{changePriority} could be
+useful. For instance, suppose that during the exploration so far,
+you've found a way to get your game character to a certain place, at
+the cost of losing almost all energy. If that place is surrounded by
+monsters, it may not be worth exploring for now.
+But suppose that by exploring something else, we now discover a way to
+get to the same place with almost all energy still in place. 
+Now, exploring from that state should have higher priority, as it
+looks more promising. In other words, we'd like to now change the
+priority of this state.
+
+As we discussed above, depending on how we think about our
+application, we can think of priority as inherent in an item, or
+determined only when the item is added to the data structure.
+In the former case, the priority is assigned at creation of the item,
+while in the latter case, it is assigned when \code{add} is called.
+
+One natural question is whether we should allow items with the same
+priority in the priority queue at the same time. 
+If we do, then there is no guarantee which of them will be returned by
+\code{peek} (and removed by \code{remove}, though usually, you would
+want to guarantee that it's the same one). 
+After all, if they have exactly the same priority, by definition, each
+is equally important.
+If that's not what you want, then you should change your definition of
+priority to break ties in the way you want them to be broken.
+For instance, if you want to break ties in FIFO order, then the
+priority should be a pair \code{(originalPriority, additionTime)}, and
+item \code{a} has higher priority than \code{b} if it has higher
+\code{originalPriority}, or the same \code{originalPriority} and
+earlier \code{additionTime}.
+
+\section{Simple Implementations of a Priority Queue}
+Notice that even though ``Priority Queue'' has the word ``Queue'' in
+it (because there are some conceptual similarities), it is not a good
+idea to implement it as a queue; in fact, it's not clear how you would
+even do that.
+
+The two na\"{\i}ve implementations would be using a (unsorted or sorted)
+linked list or array. For a linked list or unsorted array (or
+\code{List} type), the implementation would be as follows:
+\begin{description}
+\item[\code{Add}]: Add the item at the tail or the head of the linked
+  list, or at the end of the array. This runs in $\Theta(1)$.
+\item[\code{Peek}]: To return the highest-priority element, we now
+  have to search the entire array or list, so it takes $\Theta(n)$.
+\item[\code{Remove}]: To remove the highest-priority element, we first
+  have to find it (linear search). In an array, we also have to shift
+  array contents to fill the gap. So this takes $\Theta(n)$.
+\end{description}
+
+So a linked list or unsorted array are great for inserting elements,
+but not good at finding high-priority elements (or removing them).
+An alternative is to sort the array (or \code{List} or linked list) by
+priority, with the highest priority at the end of the array. Then, the
+implementations would work as follows:
+\begin{description}
+\item[\code{Add}]: Search for the correct position ($O(\log n)$ using
+  binary search in an array or \code{List}, linear search in a linked list). 
+  Once the correct position is found, insert the element there. 
+  In an array, this involves shifting everything to the right of the inserted
+  element over by one position.
+  So in either case, the cost is $\Theta(n)$.
+\item[\code{Peek}]: Returns the last element, so it runs in $\Theta(1)$.
+\item[\code{Remove}]: Removes the last element, e.g., by decreasing
+  the \code{size} counter, so it takes $\Theta(1)$.
+\end{description}
+Thus, a sorted array or linked list is fast at looking up and removing
+high-priority elements, but pays with linear insertion cost. 
+
+\section{Implementation using a Heap}
+The ``sorted array'' implementation of a Priority Queue is going in
+the right direction: it makes sure we can access the highest-priority
+element easily, by putting it in a designated spot. 
+But beyond that, it is somewhat overkill. Just to access the
+highest-priority element, it is not necessary to keep the array
+entirely sorted --- it would be enough for it to be ``kind of''
+sorted, so that after removing the highest-priority element, the next
+one can be found from among only few alternatives.
+
+This is exactly the clever idea underlying a \todef{heap}.\footnote{The
+  data structure \emph{heap} shares only the name with the heap memory
+  used to allocate objects; don't confuse the two.}
+A heap is a \emph{complete binary tree} with the following additional
+key property on the contents of its nodes:
+
+\begin{quote}
+\textbf{Heap Property: }
+For each node $u$, the priority of the content at $u$ is at least as
+high as for all of $u$'s children.\footnote{If we build a heap using
+  integer priorities, is is up to us to decide whether larger or
+  smaller integers encode higher priority. A heap that puts the
+  smallest number at the top is called a \todef{Min Heap}, while one
+  that puts the largest number at the top is called a \todef{Max Heap}.
+  Obviously, it is easy to change from one to the other by switching
+  comparison operators, or multiplying all numbers with -1.}
+\end{quote}
+
+\begin{figure}[htb]
+\begin{center}
+\psset{xunit=0.5cm,yunit=0.5cm,arrowsize=0.1 3}
+\pspicture(-7,-1)(6,7)
+
+\psset{framesep=0.2,linecolor=black,fillstyle=none}
+
+\cnodeput(0,6){r}{10}
+\cnodeput(-3,4){u1}{3}
+\cnodeput(3,4){u2}{8}
+\cnodeput(-5,2){v1}{5}
+\cnodeput(-1,2){v2}{2}
+\cnodeput(1,2){v3}{6}
+\cnodeput(5,2){v4}{4}
+\cnodeput(-6,0){w1}{2}
+\cnodeput(-4,0){w2}{1}
+\cnodeput(-2,0){w3}{1}
+
+\ncline{->}{r}{u1}
+\ncline{->}{r}{u2}
+\ncline{->}{u1}{v1}
+\ncline{->}{u1}{v2}
+\ncline{->}{u2}{v3}
+\ncline{->}{u2}{v4}
+\ncline{->}{v1}{w1}
+\ncline{->}{v1}{w2}
+\ncline{->}{v2}{w3}
+\endpspicture
+\end{center}
+\caption{An illustration of the heap property, for a Max-Heap.
+The given tree is a complete binary tree. It satisfies the heap
+property at all nodes except one: the node with priority 3 has a child
+(its left child) with priority 5, which is not supposed to happen.
+Notice that for any node, it does not matter which of its children has
+higher priority, so long as both have no higher priority than the node
+itself.\label{fig:heap}}
+\end{figure}
+
+Notice that when we are implementing a Priority Queue using a heap, it
+is our responsibility to ensure that the tree remains a complete
+binary tree, and the Heap Property is maintained.
+
+We mentioned above that a heap should be a complete binary tree. This
+means that all leaves are within at most one level of each other, and
+all leaves at the lowest level are as far left as possible.
+As we discussed in previous lectures, this implies that the heap can
+easily be stored in an array.
+In order to put the root at 0, rather than at 1 (as we did before), we
+now get that for any node $i$, the parent is then located at array index 
+$\lfloor (i-1)/2 \rfloor$, while the children are at $2i+1$ and $2i+2$.
+(When we started labels at 1, the parent was at 
+$\lfloor i/2 \rfloor$, and the children were at $2i$ and $2i+1$.)
+
+We can now proceed to implementing the functions for a priority queue.
+We will assume that the binary tree is stored in an array \code{a},
+and that the root is in \code{a[0]}. 
+The variable \code{size} captures the number of
+elements currently stored in the array, so it starts at 0.
+We will not worry about exceeding the array size --- this can be taken
+care of by using our \code{List<T>} data type instead of an actual array.
+
+\begin{description}
+\item[\code{Peek}]: This is particularly easy, since the
+  highest-priority element will always be at the root node.
+
+\begin{verbatim}
+T peek() const { return a[0]; }
+\end{verbatim}
+
+\item[\code{Add}]: When we add an element, we first wonder where to
+  add it. Since we want to maintain the ``complete binary tree''
+  property, there is really only one place: as a new leaf as far to
+  the left as possible. (In array positions, this translates to
+  inserting it at \code{a[size]}. 
+
+  But inserting it there may violate the heap property, if the newly
+  added element has higher priority than its parent. So we need to fix
+  the heap property after adding the element. We do so by swapping it
+  with its parent, if necessary, and then continuing at that node,
+  having the element ``trickle up'' until it actually has lower
+  priority than its parent node, or reaches the root. This gives us
+  the following:
+
+\begin{verbatim}
+void add (const T & data)
+{
+   size++;
+   a[size-1] = data;
+   trickleUp(size-1);
+}
+
+void trickleUp (int pos) 
+{
+   if (pos > 0 && a[pos] > a[(pos-1)/2])
+      {
+          swap (a, pos, (pos-1)/2);
+          trickleUp((pos-1)/2);
+      }
+}
+\end{verbatim}
+
+\item[\code{Remove}]: In trying to remove the highest-priority
+  element, our first thought would be to just delete that element from
+  the array. But we can't have a tree without a root. This would
+  perhaps suggest filling the root with the one of its children that
+  has larger priority, then recursing on the child.
+  The problem with that approach is that by the time we reach the
+  lowest level of the tree, we may end up swapping up a leaf
+  from the ``middle'', i.e., violating the part of the ``complete
+  binary tree'' property requiring that the leaves are as far left as
+  possible. 
+
+  An improved way is to instead move the very last leaf's
+  content into the root first. That way, we know which leaf is being
+  moved. The rest of the way, we just do \code{swap} operations,
+  trickling down this new root to where it actually belongs. This
+  gives us the following solution.
+
+\begin{verbatim}
+void remove ()
+{
+   swap (a, 0, size-1); // swaps the highest priority element with the rightmost leaf
+   size --;            // we want to consider the former root "deleted"
+   trickleDown (0);    // trickles down, so the former leaf will go where it needs
+}		
+
+void trickleDown (int pos) 
+{ 
+   if (pos is not a leaf)    // implement test as 2*pos+1 < size
+   {
+       i = child of pos of highest priority;
+               // If you only have one child, return that child.
+               // Else, use comparisons to see which has highest priority
+       if (a[i] > a[pos]) 
+          {
+             swap (a, i, pos);
+             trickleDown (i);
+          } 
+    }
+}
+\end{verbatim}
+\end{description}
+
+\section{Running Time of Priority Queue Operations}
+\label{sec:priority-queues:running-time}
+
+Next, we analyze the running times of our Priority Queues operations.
+Since \code{swap}, array access in known positions, \code{return} etc.,
+are all constant time, we get that \code{peek ()} takes running time 
+$\Theta(1)$ --- after all, the highest-priority element is known to be
+at the root.
+For both \code{add ()} and \code{remove ()}, everything except
+\code{trickleUp()} and \code{trickleDown()} takes constant time, so we
+really just need to analyze the running time of those two functions.
+
+In both cases, a constant amount of work is done in the function
+(\code{trickleUp()} or \code{trickleDown()}), and then, a recursive
+call is made with a node at the next higher or lower level. 
+Thus, the amount of work is $\Theta(\mbox{height}(\mbox{tree}))$.
+So our goal is now to figure out the height of a complete binary tree
+with $n$ nodes. We will do that by first solving the inverse problem:
+what's the minimum number of nodes in a complete binary tree of height
+$h$?
+
+To make the tree have height $h$, we must have at least one node on
+level $h-1$. Each node at levels $i=0, \ldots, h-3$ has at least two
+children. Therefore, the number of nodes doubles from level to level,
+and we have $2^i$ nodes at each level $i < h-1$, and at least one at
+level $h-1$. Summing them up over all levels gives us
+$1 + \sum_{i=0}^{h-2} 2^i = 1 + (2^{h-1}-1) = 2^{h-1}$.
+The sum we evaluated was a geometric series, and is one of the series
+that you really need to have down pat as a computer scientist.
+
+So now, we know that a tree of $h$ levels has at least $2^{h-1}$
+nodes, so when $n \geq 2^{h-1}$ (because the tree has $h$ levels),
+we can solve for $h$ and get that $h \leq 1 + \log_2 (n) = \Theta(\log n)$.
+So we have proved that a complete binary tree with $n$ nodes has 
+height $\Theta(\log n)$.
+					
+Putting it all together, we get that both \code{add()} and
+\code{remove()} take time $\Theta(\log n)$. 
+We can now create a table of how long the different implementations
+take.
+
+\begin{table}[htb]
+\begin{center}
+\begin{tabular}{|l|l|l|l|}
+\hline
+& unsorted array & sorted array & heap \\
+\hline
+add    & $\Theta(1)$ & $\Theta(n)$ & $\Theta(\log n)$ \\[1ex]
+peek   & $\Theta(n)$ & $\Theta(1)$ & $\Theta(1)$ \\[1ex]
+remove & $\Theta(n)$ & $\Theta(1)$ & $\Theta(\log n)$\\
+\hline
+\end{tabular}
+\end{center}
+\caption{Comparison of Priority Queue implementations.}
+\end{table}
+
+For other tasks we have seen in this class, the usual answer to
+``Which data structure is best?'' was ``It depends''.
+Here, this is not the case. A heap is clearly the best data structure
+to implement a priority queue. While it looks as if on individual
+operations, one or the other of unsorted arrays and sorted arrays will
+beat a heap, with a priority queue, each element is usually inserted
+once, removed once, and looked at once (before being removed).
+Thus, a sequence of $n$ insertions, peeks, and removals will take the
+other data structures $\Theta(n^2)$, while it takes a heap 
+$\Theta(n \log n)$, much faster.
+
+\section{Heap Sort}
+So now we have an ADT that implements \code{add}, \code{remove}, and
+\code{peek} in time $O(\log n)$. Do we already know of any algorithms
+where we want to repeatedly find the largest element and then remove
+it?
+
+Indeed, we do. If we look back at Selection Sort from a few weeks ago,
+we can describe it as follows\footnote{At the time, we described it as
+  repeatedly finding the smallest element and putting it at the
+  beginning of the array. Equivalently, we can repeatedly find the
+  largest element and put it at the end of the array.}:
+
+\begin{verbatim}
+for (int i = n-1; i > 0; i --)
+   {
+     Let j be largest element of a between 0 and i;
+     a.swap (i,j);
+   }
+\end{verbatim}
+
+Previously, we ran a loop to find $j$. 
+But now, we have something better. We can put all of the elements of
+the array in a Max-Heap first. Since there are $n$ elements, and each
+takes at most $O(\log n)$ to add, this takes time $O(n \log n)$.
+(The first few actually take less time, as the heap is almost empty;
+but for most of them, it's still $\Theta(\log n)$, so we can't improve
+the analysis.)
+Then, we can repeatedly find the largest element and put it in its
+final position. Finding it takes $O(1)$ and removing it takes $O(\log
+n)$, and since we do that $n-1$ times, the whole thing takes 
+$O(n \log n)$, too. The resulting algorithm is called HeapSort, and
+it's a non-recursive $O(n \log n)$ algorithm, which is kind of cool.
+(We implemented \code{trickleDown} and \code{trickleUp} recursively,
+but they are pretty easy to implement iteratively, too.)
+
+When you look at it, you realize that you can actually use the array
+\code{a} itself as a heap. You can start by calling \code{trickleUp}
+on each element $i$ from $n-1$ to $0$. After that, the array satisfies
+the heap property. Then, we swap position $0$ with $n-1$, and
+decrement \code{size} by one, then trickling down from 0. We repeat
+this --- every time, we are putting one more element in its final
+position, and telling the heap that it now ``owns'' one fewer element
+of the array. So we don't even need any additional memory or data
+structure.
+
+As a side remark, HeapSort in the obvious implementation is not
+stable, because array indices are given a very different
+interpretation by heaps compared to the ``normal'' one.
+Making it stable is quite an interesting research topic, and the
+consensus appears to be that it requires at least a little bit more
+memory $\Theta(n)$, i.e., basically another copy of the array. 

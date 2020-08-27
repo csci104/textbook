@@ -1,0 +1,381 @@
+The ADTs we have learned about and implemented so far, and
+most of the ones we will learn about later, actually come
+pre-implemented with C++, in the Standard Template Library (STL).
+The STL also contains implementations of several frequently used
+algorithms. 
+
+While many students surely have been waiting eagerly to use STL
+implementations instead of having to code data types from scratch,
+some may wonder why one would use STL. The advantage of standard
+libraries is that they save us some coding, and more importantly, a
+lot of debugging, as they presumably have been much more carefully
+debugged than our own code. When our own project is big enough, we'd
+like to avoid having to debug the basic data structures \emph{in
+  addition to} the high-level logic.
+The contents of STL can be roughly categorized as follows:
+
+\begin{description}
+\item[Containers]: These are data structures; the name arises because
+  they \emph{contain} items. They can be further divided as follows:
+\begin{enumerate}
+\item Sequence containers: These are data structures in which items
+  are accessed by the position they are stored at, like arrays.
+  Our example from class was called \code{List}.
+\item Associative containers: Here, items are accessed via their
+  ``identity'' or key. The user does not know which index an element
+  is stored at --- in fact, there may not be a clear notion of an index.
+  The associative data structures we have seen are \code{Set} and
+  \code{Map}.
+\item Adapters: these are restricted interfaces that give you specific
+  functionality, such as \code{Stack}, \code{Queue}, or \code{Priority
+    Queue} (we'll learn about that one soon). 
+  They are often implemented on top of other classes, such 
+    as \code{List}.
+\end{enumerate}
+		
+\item[Algorithms]: To use pre-implemented algorithms, you should
+\code{\#include<algorithm>}. The algorithms all live in the 
+\code{namespace std}. They are roughly divided as follows:
+\begin{enumerate}
+\item Search and compare: these are mostly iterator-based. They allow
+  you to run some algorithm (compare elements to a given one, count/add all
+  elements, etc.) on all elements of a container.
+  To use these algorithms, you need to pass in an iterator of the
+  container. A brief introduction to iterators is given below, and we
+  will discuss them in more detail later in the semester, and in
+  Chapter~\ref{chap:iterators}. 
+%  Referring back to the discussion of the Map-Reduce paradigm we
+%  talked about in the context of iterators, these are typical
+%  functions that would contribute the ``Reduce'' side.
+\item Sequence modification: These will affect the entire container,
+  such as filling an array with zeros, or performing a computation on
+  all elements. They are also iterator-based. 
+%  In the context of the Map-Reduce paradigm, these algorithms would
+%  fit with the ``Map'' part.
+\item Miscellaneous: These contain mostly sorting algorithms, and
+  algorithms for manipulating heaps, but also computing moments of a
+  distribution and partitioning items. 
+\end{enumerate}
+\end{description}
+
+\section{More Details on Container Classes}
+
+All containers implement at least the following functions:
+\begin{verbatim}
+bool empty();
+unsigned int size();
+operator= is overloaded
+iterators
+\end{verbatim}
+	
+The \code{size()} function doesn't tell you how many elements are in
+the container, but rather how many elements it can hold (which we
+typically call its \emph{capacity} in class). 
+	
+For all of the container classes described next, if you want to use
+them, you need to \code{\#include<container-name>}, where
+\code{container-name} is the name of the container you wish to use.
+You also must either use \code{namespace std} or precede each
+container name with \code{std::}. Remember that except in your main
+file, using \code{namespace std} is generally a bad idea, as it forces
+every program that includes your code to use that namespace, sometimes
+causing clashes in variable or class names.
+	
+Also, as the name says, these classes are ``templated.'' 
+This means that you can easily build stacks, queueues, maps, etc., with
+any kinds of data stored in them (whereas earlier, we just built them
+for integers). You will learn later, in Chapter~\ref{chap:templates},
+how to build your own template classes. (It's not difficult, but can
+cause compiler/linker errors if you're not careful.) For now, you need
+to know how to use them. That's actually not hard. 
+When STL has declarations such as
+
+\begin{verbatim}
+template <class T>
+class stack { 
+  ...
+  void push (T item);
+  ...
+};
+
+template <class keyType, class valueType>
+class map { 
+  ...
+  void erase (keyType key);
+  ...
+}
+\end{verbatim}
+
+you can define your own versions as follows:
+\begin{verbatim}
+stack<string> myStringStack;
+map<int,bool> myIntToBoolMap;
+\end{verbatim}
+
+You can substitute any types there, including ones you have defined
+yourself, or other container types. (For instance, you could have a
+map each of whose values is a stack.) To use the functions, you can
+now write
+
+\begin{verbatim}
+string s = "Hello World";
+
+myStringStack.push (s);
+myIntToBoolMap.erase (5);
+\end{verbatim}
+
+In other words, C++ will automatically make sure that the right
+functions exist for the types you specified.
+
+\subsection{Sequence Containers}
+As we mentioned above, sequence containers are
+similar to \code{List<T>} from class, in that they implement access to
+elements typically by index position.
+They allow reading, overwriting, inserting, and removing. 
+Also, most of them implement swapping, and several other functions.
+There are several sequence container classes, with different tradeoffs
+and implementations.
+
+\begin{description}
+\item[\code{vector<T>}]: This is basically our \code{List<T>} type,
+implemented using an expanding (doubling) array internally.
+
+\item[\code{array<T>}]: This implements a fixed-size array,
+i.e., it does not grow and does not provide \code{insert} or \code{remove}. 
+Its interface and functionality is basically the same as a standard array.
+(It is available only starting with C++11.)
+
+The main advantage over \code{T* a = new T[100]} is that it catches
+array indices out of bounds and throws exceptions, instead of leading
+to segfaults or other bad errors.
+			
+\item[\code{list<T>}]: This is a doubly-linked list. It does not allow
+access by index. 
+In C++11, there is also a singly linked list as \code{forwardlist<T>};
+it saves a bit of memory.
+The linked list contains some additional list-specific operations such
+as combining and splicing lists.
+			
+\item[\code{deque<T>}]: This is \emph{not} a \code{deque} in the
+sense that it combines a \code{stack} with a \code{queue}.
+Rather, it is a data type similar to \code{vector<T>}, but implemented
+with non-contiguous memory blocks. (Basically, it internally keeps a
+lookup table which of multiple separate memory blocks to access when a
+particular index is requested.)
+
+Because it does not need to copy over all elements when the size
+grows, inserting elements is faster.
+On the other hand, some operations have more complex implementations
+and are a bit slower. 
+If you anticipate that you will be spending a lot of time growing your
+arrays, consider using \code{deque<T>} instead of \code{vector<T>}.
+\end{description}
+		
+\subsection{Adapter Containers}
+The adapter containers are called this because they ``adapt'' the
+interface of another class, and are not implemented from scratch.
+They provide special and restricted functionality.
+The three adapters in STL are \code{stack<T>}, \code{queue<T>}, and 
+\code{priority-queue<T>}, implementing the data types we have learned
+about in this class, or (in the case of \code{priority-queue<T>}) will
+learn about soon.
+
+\subsection{Associative Containers}
+In sequence containers, we access elements by their position in the
+container, so it matters \emph{where exactly} an element is stored.
+In associative containers, we only know that we want to insert,
+remove, and look up elements, but we don't care where or how they are
+stored, so long as the data structure can find them for us (by their
+identity or key) when we want to access them.
+
+The two associative container types we have seen so far are
+\code{Set<T>} and \code{Map<T1, T2>}. Recall that \code{Set<T>}
+provides the following functions:
+	
+\begin{verbatim}
+   insert(T item)
+   remove(T item)
+   bool contains(T item)
+\end{verbatim}
+			
+A \emph{Map/Dictionary} is similar, but it creates an association between
+a key (such as a word) and a value (such as the definition of the word).
+The name used in STL and elsewhere is usually \code{map}.
+The functions that a map should provide are:
+			
+\begin{verbatim}
+   insert (keyType & key, valueType & value)
+   remove (keyType & key)
+   valueType & lookUp (keyType & key)
+\end{verbatim}
+			
+While this is how we have been thinking about sets and maps, the
+actual implementation and naming in STL is a little different, as
+described below.
+
+\subsubsection{Different Set/Map classes}
+STL provides implementations of \code{set} and \code{map}, differing
+in several parameters.
+\begin{description}				
+\item[\code{set<T>}]: implements a set that can contain at most one
+  copy of each element, i.e., no two elements may have the same key.
+\item[\code{multiset<T>}]: implements a multiset of elements, which
+  means that it may contain multiple elements with the same key.
+\item[\code{map<keyType, valueType>}]: implements a map from keys to values, ensuring
+  that there is at most one copy of each key.
+\item[\code{multimap<keyType, valueType}]: implements a map from keys to values that
+  allows the data structure to contain more than one copy of a key.
+\end{description}
+
+All of these data types are implemented using balanced search trees
+(which we will learn about in a month or so). 
+What this means is that you will have to provide a comparison operator
+(i.e., overload \code{<=}, \code{<} etc.)
+for your type \code{T} if you want to use these types, or hope that
+whatever default is implemented will work well enough.
+
+There is an alternative implementation using hash tables (which we
+will learn about right after balanced trees). 
+To access those implementations instead, you put the word 
+\code{unordered\_} in front of the type's name, e.g.,
+\code{unordered\_{}map}.
+
+The hash table implementation is often faster, but it depends on a
+good implementation of a hash function, which you may have to write
+and provide yourself to suit your type \code{T}.
+On the other hand, the tree-based version is very fast at iterating
+over all entries in sorted order, since that's how they are stored
+internally anyway.
+
+\subsubsection{Functions in STL Set/Map classes}
+Here are the most relevant functions for set in STL:
+
+\begin{description}
+\item[\code{set::insert (T element)}]: inserts the element into the set. It
+  returns an iterator to the element, but this is usually not so
+  relevant for you.
+\item[\code{void set::erase (T element)}]: removes the element from the set.
+\item[\code{size\_type set::count (T element)}]: returns the number of times
+  the element occurs in the set, which is 0 or 1 for a regular set
+  (not multiset). Allows you to test if the set contains the element.
+\item[\code{iterator set::find (T element)}]: returns an iterator to the
+  element in the set. You can use this for removing the element. If
+  the element is not in the set \code{s}, the iterator will be equal
+  to \code{s.end()}; see the discussion of iterators below.
+\end{description}
+
+For maps, while we had written \code{add} as a function with two parameters,
+the way it is actually implemented in STL is with just a single
+parameter, which is of type \code{pair}; a \code{pair} is just a
+\code{struct} of two individual types. It is essentially defined as follows:
+
+\begin{verbatim}
+template <class S, class T>
+class pair {
+  public:
+  S first;
+  T second;
+
+  Pair (S s, T t) { first = s; second = t; }
+}
+\end{verbatim}
+
+This type is used in a number of places, as we will see. Throughout
+the following list, we assume that we have a \code{map<keyType, valueType>}.
+
+\begin{description}
+\item[\code{map::insert (pair<keyType,valueType>)}]: inserts the association
+  between \code{p.first} and \code{p.second} into the map, and returns
+  an iterator to that element. If the map already contained an
+  association for the key \code{p.first}, \code{insert} does not
+  change anything, and instead returns an iterator to the existing pair.
+\item[\code{void map::erase (keyType key)}]: removes the association for
+  \code{key} from the map. If there was no association for the key, it
+  doesn't do anything.
+\item[\code{size\_type map::count (keyType key)}]: returns the number of
+  associations for the given \code{key}, which is 0 or 1 for a regular
+  map (not multimap). Allows you to test if the map already has an
+  assignment for the key.
+\item[\code{iterator map::find (keyType key)}]: returns an iterator to the
+  pair \code{(key, value)} associated with \code{key} in the map. 
+  If the key has no association in the map \code{m}, the iterator will
+  be equal to \code{m.end()}; see the discussion of iterators below.
+  The iterator iterates over \emph{pairs}, so if you want to extract
+  the value, you get it with \code{m.find(key)->second} (and the
+  key itself should be \code{m.find(key)->first}). Make sure to test
+  that there was actually a mapping for your \code{key} before you
+  dereference the iterator.
+\item[\code{valueType \& map::operator[] (keyType key)}]: allows you to
+  treat your map essentially like an array, by writing things like
+\begin{verbatim}
+map<string, int> myMap;
+myMap["Hello World"] = 101;
+myMap["Hello World"] = 103;
+myMap["Thanks for the fish!"] = 42;
+cout << myMap["Hello World"];
+\end{verbatim}
+  Different from the \code{insert} function, this one allows you to
+  overwrite the mapping for a given key, e.g., the code above would
+  output \code{103}. When you try to read the value for a key that
+  isn't in the map, this will \emph{insert} the key into the map, with
+  some dummy value assigned to it. It will then return the dummy
+  value. So be forewarned in using this!
+\end{description}
+
+\subsection{Iterators}
+Iterators are a systematic and unified way of traversing arrays and
+other data structures. You will learn much more about them (including
+how to write your own) in Chapter~\ref{chap:iterators}. For now, just
+a quick primer on how to use them.
+
+When you go through an array with a loop, your code might look like
+the following:
+
+\begin{verbatim}
+int a[10];
+int *i;
+
+for (i = a; i < a + 10; ++ i) 
+   cout << (*i);
+\end{verbatim}
+
+Notice that instead of writing \code{a[i]}, we basically treated the
+index itself as a pointer. Iterators try to resemble this code as much
+as possible. When you have a data structure that implements/allows
+iterators, it will give you two functions: \code{a.begin()} and
+\code{a.end()}. The former gives you an iterator pointing to the
+``first'' element, and the latter an iterator pointing to the element
+just after you are done (which in the above loop is \code{a+10}). So
+you would write code like this:
+
+\begin{verbatim}
+MyDataStructure a;
+iterator i;
+
+for (i = a.begin(); i != a.end(); ++ i)
+   cout << (*i);
+\end{verbatim}
+
+Iterators typically overload \code{=}, \code{==}, \code{!=},
+\code{++}, \code{*}, and \code{->} so that your code looks as similar
+as possible to the loop over arrays. It is convention that
+\code{a.end()} is used for ``We're done''.
+
+Therefore, when \code{it = map::find(...)} returns an iterator, its value will
+equal \code{m.end()} if the element was not found, and otherwise, it
+can be treated almost like a pointer in an array. In particular, you
+can use \code{*it} to get to the \emph{pair} that the iterators is
+pointing to, and \code{(*it).second} or \code{it->second} to reference
+its second component, which is the value you want.
+
+You can also output all the values in a map with an iterator, as
+follows:
+\begin{verbatim}
+map<string, int> m;
+// put stuff into the map here first
+
+for (iterator it = m.begin(); it != m.end(); ++it)
+   cout << "Key: " << it->first << "  Value: " << it->second << "\n";
+\end{verbatim}
+
+

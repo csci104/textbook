@@ -1,0 +1,216 @@
+\section{Exercises}
+
+\subsection{\ReviewQuestions}
+
+\begin{exercise}
+  What does the term ``recursive'' mean?
+\end{exercise}
+
+\begin{exercise}
+  What is the defining property of a recursive function?
+\end{exercise}
+
+\begin{exercise}
+  Why is it essential for a recursive function to have at least one
+  base case?
+\end{exercise}
+
+\begin{exercise}
+  Why is it essential that the recursive calls in a recursive function
+  be made on smaller inputs?
+\end{exercise}
+
+\begin{exercise}
+  What property makes it easy to replace a recursive function with a
+  loop?
+\end{exercise}
+
+\begin{exercise}
+  How does recursive exhaustive search work?
+\end{exercise}
+
+\begin{exercise}
+  What is the difference between head recursion and tail recursion?
+\end{exercise}
+
+\begin{exercise}
+  What is the difference between direct and indirect recursion?
+\end{exercise}
+
+\subsection{\EasyQuestions}
+\begin{exercise}
+  Write a recursive program using tail recursion
+  that returns the sum of integers in a given array.
+  Use the following function header:
+
+\begin{verbatim}
+  int tailSum (int* array, int n, int &tempSum);
+\end{verbatim}
+  Obviously, you should not use any loops anywhere to get something
+  out of this exercise.
+\end{exercise}
+
+\begin{exercise}
+  Write a recursive program using head recursion
+  that returns the sum of integers in a given array.
+  Use the following function header:
+
+\begin{verbatim}
+  int headSum (int* array, int n);
+\end{verbatim}
+
+  In particular, do not pass around any variable by reference here.
+  (And of course, do not use any loops.)
+\end{exercise}
+
+\begin{exercise}
+  Write a recursive program using tail recursion
+  that returns the maximum of integers in a given array.
+  Use the following function header:
+
+\begin{verbatim}
+  int tailMax (int* array, int n, int &tempSum);
+\end{verbatim}
+  Obviously, you should not use any loops anywhere to get something
+  out of this exercise.
+\end{exercise}
+
+\begin{exercise}
+  Write a recursive program using head recursion
+  that returns the maximum of integers in a given array.
+  Use the following function header:
+
+\begin{verbatim}
+  int headMax (int* array, int n);
+\end{verbatim}
+
+  In particular, do not pass around any variable by reference here.
+  (And of course, do not use any loops.)
+\end{exercise}
+
+\begin{exercise}
+  Write a recursive program using tail recursion
+  that returns the concatenation of all strings in a given array.
+  Use the following function header:
+
+\begin{verbatim}
+  string tailConcatenation (string* array, int n, string &tempString);
+\end{verbatim}
+  Obviously, you should not use any loops anywhere to get something
+  out of this exercise.
+\end{exercise}
+
+\begin{exercise}
+  Write a recursive program using head recursion
+  that returns the concatenation of all strings in a given array.
+  Use the following function header:
+
+\begin{verbatim}
+  string headConcatenation (string* array, int n);
+\end{verbatim}
+
+  In particular, do not pass around any variable by reference here.
+  (And of course, do not use any loops.)
+\end{exercise}
+
+\begin{exercise}
+  Write a recursive program that prints all numbers base 3 of a given
+  length $n$.
+\end{exercise}
+
+\begin{exercise}
+  Extend the recursive context-free grammar for arithmetic expressions
+  to include subtraction and division.
+\end{exercise}
+
+\subsection{\MediumQuestions}
+\begin{exercise}
+  Write a recursive function that returns the input string in reverse
+  order. (So ``Problem'' becomes ``melborP''.)
+  Use the following function header:
+
+\begin{verbatim}
+  string reverseString (string* a);
+\end{verbatim}
+
+  You cannot use loops, nor should you add any arguments to the
+  function.
+  But you can use the \code{substr} function in the \code{string} class.
+\end{exercise}
+
+\begin{exercise}
+  Write a recursive program that allows a user to enter a string
+  \code{s} and a number \code{n}, and prints all strings of length $n$
+  made up of characters occurring in \code{s}.
+\end{exercise}
+
+\begin{exercise}
+  Write a recursive Ternary Search algorithm to find an integer in an
+  array of integers.
+  To do so, your algorithm should check the positions
+  $\frac{1}{3}$ and $\frac{2}{3}$ through the (remaining) array to 
+  determine which part the target number is in,
+  then recurse on that part.
+  Your solution should not contain any loops.
+\end{exercise}
+
+\begin{exercise}
+  Give a recursive definition of a correct sequence of parentheses.
+  Such a sequence can use the characters `[', `(', `)', `]',
+  and parentheses need to match ``outside in.''
+  Some examples that should fit in your definition are
+  ``'' (empty string), ``([])[]((()))'', ``(((([[()]]))))''.
+  Examples that should not be allowed under your definition are
+  ``(()'' (unmatched), ``][' (wrong order), ``((])'' (mismatch).
+\end{exercise}
+
+\subsection{\HarderQuestions}
+\begin{exercise}
+  Write a recursive Backtracking program to color a
+  graph.\footnote{Applications include classroom scheduling, map
+    coloring below, and many others.}
+  You are given an $n \times n$ array of 0/1 entries,
+  where 1 in the $(i,j)$ position means that $i$ and $j$ are
+  incompatible, and must be given different colors.
+  (For instance, two classes have a common student/teacher,
+  or two countries share a border, or two students do not get along
+  and cannot be put on the same team.)
+  Your goal is to find an assignment of ``colors'' (numbers) to the
+  $n$ individual entries such that no two incompatible individuals
+  have the same color.
+  You want to do this with at most $k$ total colors.
+\end{exercise}
+
+\begin{exercise}
+  Solve the previous coloring problem specifically for a map.
+  Your input will now be a map, represented as a 2-D array of
+  characters.
+  All squares with the same character belong to the same country.
+  Inputs are such that each country is \emph{connected}, meaning that
+  you can go from any of its squares to any other going only
+  up/down/left/right, without leaving the country.
+  Two countries share a border if you can go from some square of one of
+  them to some square of the other in one up/down/left/right step.
+  If two countries share a border, they cannot be given the same color
+  (because you could not tell them apart on a map).
+  For a given map, find a coloring with at most 4 colors.
+  (This is always possible by the famous Four-Color Theorem.)
+\end{exercise}
+
+\begin{exercise}
+  Use a recursive Backtracking solution to solve the following
+  problem of selecting a team for your startup company.
+  You have $n$ candidate programmers,
+  each with an ability score $a_i$ and a
+  minimum salary $s_i$ you would need to pay them.
+  You have a budget of $B$.
+  The quality of your team is the sum of their ability scores.
+  Compute the maximum quality you could obtain within your given
+  budget.
+  (If you think that Backtracking is not necessary, since you could
+  just keep adding the best ``bang for the buck'' programmers you can
+  afford, think about how your program would figure out to hire 10
+  programmers with ability 1 and salary 1 using a budget of 10,
+  instead of starting with a programmer with ability 5.9 and salary
+  5.1.)
+\end{exercise}

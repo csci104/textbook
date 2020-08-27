@@ -1,0 +1,438 @@
+When we store a set of items in a data structure, one of the things
+that we often want to do is be able to output all of them.
+For instance, in the case of a set, while our main focus was on adding
+and removing items (and test membership), we want to be able to
+output all items as well. Ideally, we would also like the process to
+be fast. How should we do that?
+
+\section{Some first attempts}
+One solution would be to give the programmer (who wants to output
+things) access to the internals of our data structure. 
+For instance, if it is known that we used a linked list, and we return
+the head of the linked list, then starting from the head, it is
+possible to go through all items of the linked list.
+But of course, this is a terrible solution: it violates everything we
+are trying to do by hiding the implementation; the user of our data
+structure should only interact with specified functions, and not know
+what goes on internally. His/her code would not work any more if we
+change the internal implementation to an array-based one.
+
+At the other extreme would be to simply include in our implementation
+of the data structure another function \code{print()}, which prints
+all items to \code{cout}. But what if we want to print them to a file
+instead? Well, we could print them into a string, which could then be
+written to either \code{cout} or a file. 
+But now what if someone would like them output in a different format?
+Or someone only wants to output all the entries that satisfy certain
+criteria? We might end up writing a huge number of different output
+functions. And then additional functions that might actually process
+the items. Clearly, that solution does not work, either.
+
+Another solution would be to essentially provide the interface
+of the \code{List} class on top of any data structure: 
+allow access to all elements by index, via a function \code{get(int i)}. 
+This works better, but it is not very efficient: if the underlying
+implementation is via a linked list, then this takes time $\Theta(i)$
+for element number $i$, for a total of $\Theta(\sum_{i=1}^n i) = \Theta(n^2)$.
+Whereas if we had just traversed the linked list, it would have been 
+just $\Theta(n)$. It's also overkill: we don't need to be able to
+access elements by index; we just want to be able to go through all of
+them.
+
+After thinking about this for a while, the solution one hopefully
+arrives at is to have some kind of a ``marker''
+that gets pushed through the data, and remembers where it was before.
+If the elements of the data structure were in some particular
+meaningful order (such as for a \code{List} data structure), then our
+marker would traverse them in that order. 
+If the order of the elements was not meaningful (for instance, for a
+\code{Set} data structure), then they could be output in any order.
+
+The ``marker'' may be implemented differently, depending on how the
+data structure itself is implemented. If the data are stored in an
+array, then the marker may just be an integer, the index in the array
+that we're currently at.
+If the data are stored in a linked list, then the marker may be a
+pointer to the current element.
+Ideally, the implementation of the marker should hide these kinds of
+detail, and just expose an interface whereby another function can
+retrieve the actual stored elements one by one, without ever having to
+know about the marker.
+
+The next question we asked ourselves was where the marker should be
+stored. The first ``obvious'' choice was that it may be stored inside
+the data structure itself. (That's what we did on Homework 4.)
+So things may look something like the
+following for our new modified \code{Set} class:
+
+\begin{verbatim}
+class Set<T> {
+  ... // prior Bag functionality.
+  T start(); // starts the traversal, returns first element
+             // could be T or T& or T*, depending on how we want to
+             // implement it.
+  T next(); // advances the marker internally, returns next element
+}
+
+Set<T> set; // contains some element already, somehow
+
+for(T elt = set.start(); end not reached; elt = set.next())
+   { // process elt, e.g., by printing it; 
+   }
+\end{verbatim}
+
+We'd have to add a way to test if the end is reached, which is not
+very difficult (e.g., return a \code{NULL} pointer or throw an
+exception). 
+The first problem with the implementation so far is that we might want
+to have multiple markers in use at once. 
+Then, we couldn't just use \code{start()} and \code{next()}, but would
+have to somehow index them.
+So the data structure would have to internally store a set of markers
+(e.g., as a set/map or something). 
+It's doable, but gets a bit cumbersome.
+
+The other issue is that because the state is stored internally in the
+\code{Set}, the \code{first()} and \code{next()} functions couldn't be
+\code{const}. Thus, we couldn't print any data structure that was
+passed as \code{const}, even though in actuality, printing doesn't
+change the contents of a data structure.
+
+For both reasons, the more ``standard'' solution is to define a
+separate class, whose objects have the ability of traversing 
+the elements of the data structure. 
+
+\section{Iterators}
+Such a class is traditionally called an \todef{iterator}, so we will
+use that term instead of ``marker'' from now on. 
+Since an iterator is a class/object encompassing one marker, it must
+provide functionality to advance, to dereference (i.e., read the
+data), and compare for equality or inequality, in order to terminate a
+loop.
+For readability (by analogy with traditional \code{for} loops), these
+functions are usually implemented with operator overloading.
+
+The class which is being iterated over must have the following
+functionality:
+\begin{itemize}
+\item Return an iterator initialized to the beginning.
+  This method is usually called \code{begin()}, and returns an iterator.
+\item Return an iterator initialized to the end, so that we can test
+  when we are done. This method is usually called \code{end()}, and
+  returns an iterator.
+\end{itemize}
+
+Suppose that for our \code{Set<T>} class, implemented, say, using a
+linked list internally, we want to define an iterator
+\code{Set<T>::Iteratator} (we'll see momentarily how to do that).
+Then, in the \code{main()} function, our use of an iterator may look
+as follows:
+
+\begin{verbatim}
+int main()
+{
+    Set<int> LLS;
+    for (int i=2; i<10; i++)
+        LLS.add(i*i);
+    LLS.remove(49);
+
+    for (Set<int>::Iterator si = LLS.begin(); si != LLB.end(); ++si)
+    { 
+        cout << *si << " ";
+    }
+    return 0; 
+}
+\end{verbatim}
+
+Here, as you can see, we use comparison to the \code{end()} iterator
+to test whether we have passed the last element. 
+To advance the iterator \code{si}, we use operator overloading, so
+that it looks as much as possible like a typical loop in which we would
+increment an integer. Similarly, we use \code{*si} to dereference the
+current value of the iterator, just like we do with pointers.
+So we're trying to make the code look as much as possible like the
+following:
+
+\begin{verbatim}
+   int a[100];
+   for (int *x = a; x < a + 100; ++x)
+      cout << (*x) << " ";
+\end{verbatim}
+
+One important thing to keep in mind about iterators is that in
+general, we want to avoid modifying the underlying data structure
+while iterating over it. Most data structures do not guarantee what
+will happen if you try that, and it's always a bad idea to execute
+operations whose results are unpredictable.
+For instance, some implementations of an iterator may have copied all
+of the data from the data structure over (so they won't be affected by
+any change), while others may look at the data structure in real time
+(and will be affected).
+
+\section{Implementing an Iterator}
+Let us first see how we would implement an \code{Iterator} class for a
+\code{Set<T>}.
+First, we want to think about what data need to be stored internally.
+We need to have the marker; and since we are implementing the
+\code{Set<T>} using a linked list, that marker will be a pointer to an
+\code{Item<T>}.
+But we also need another field: we need to remember which data
+structure the marker is traversing. For instance, two markers both of
+which point to element 7 may not be the same if they are pointing to
+element 7 of \emph{different arrays} (for implementations using
+arrays instead of linked lists). So we also need to store a
+pointer to the data structure being traversed.
+The signature thus has two private fields for data, and a few methods
+discussed below:
+\begin{verbatim}
+template<class T>
+
+class Set { 
+  public:
+
+  class Iterator {
+    private:
+      const Set<T> *whoIBelongTo;
+      Item<T> *current;
+
+      Iterator(const Set<T> *s, Item<T> *p)
+       {
+          whoIBelongTo = s; current = p;
+       }
+
+    public: // functions listed below
+       friend class Set<T>;
+
+       T & operator* () const
+          {  return current->value; }
+
+       bool operator== (const Set<T>::Iterator &other) const
+       {    return (current == other.current && whoIBelongTo == other.whoIBelongTo); }
+
+       bool operator!= (const Set<T>::Iterator &other) const
+       {    return (!this->operator== (other)); }
+
+       Set<T>::Iterator operator++ () const
+       { 
+           current = current->next;
+           return *this; 
+       }
+   }
+}
+\end{verbatim}
+
+A few notes are in order about the implementation:
+\begin{itemize}
+\item Notice that we implemented the class as a nested class inside
+  \code{Set<T>}, which means it will be referenced by
+  \code{Set<T>::Iterator}. There's really nothing difficult about
+  nested classes, and they make sense particularly for things such as
+  iterators, where one class only is useful for another.
+\item Why did we make the constructor \code{private}? The reason is
+  that we don't want just anybody to generate iterators for a given
+  set and pass weird pointers. The only class to be allowed to
+  generate a new iterator should be the set itself. By making the
+  \code{Set<T>} a \code{friend}, we've made it possible for the
+  \code{begin()} and \code{end()} functions of \code{Set<T>} to call
+  the constructor.
+\item For the \code{==} operator, we compare the pointers
+  (\code{current} vs.~\code{other.current}), rather than their data
+  (\code{current->data} vs.~\code{other.current->data}).
+  This makes sense because we might have a list that contains the same
+  number multiple times; just because it does does not make a marker
+  on the 5th element equal to a marker on the 8th.
+  Also notice that we are comparing to make sure that both iterators
+  are traversing the same data structure.
+\item For the \code{!=} operator, we took the easy way out. 
+  Instead, we could have implemented it from scratch (using DeMorgan's Theorem).
+\item For the increment operator, we not only want to move the marker,
+  but also have to declare it of type \code{Set<T>::Iterator} (rather than,
+  say \code{void}). The reason is that people may want to write
+  something like \code{cout << *(++bi)}, where the iterator is moved
+  and immediately dereferenced. While some people
+  think that this is not good coding style, you should still support
+  it.
+\end{itemize}
+
+Now that we have implemented the \code{Set<T>::Iterator} class, we can
+augment our \code{Set<T>} with two functions to return a start and
+end iterator:
+
+\begin{verbatim}
+Set<T>::Iterator Set<T>::begin()
+{    return Set<T>::Iterator(this, head); }
+
+Set<T>::Iterator Set<T>::end()
+{    return Set<T>::Iterator(this, NULL); }
+\end{verbatim}
+
+Again, a few notes on what we did here:
+\begin{itemize}
+\item Remember that the C++ keyword \code{this} is determined at
+  runtime and always contains a pointer to the object from which it is
+  called. In other words, an object can use the word \code{this} to
+  find out where in memory it resides.
+  
+  In our case, \code{this} is used to tell the iterator the identity
+  of the object it is traversing. The other argument is just the head,
+  i.e., where the traversal should start.
+\item For the \code{end()} function, we give the \code{NULL} pointer
+  as the \code{current} element of the iterator.
+  The reason is that the \code{end()} iterator should encode the case
+  when the \code{for} loop has reached the end of the linked list,
+  which happens when the pointer is a \code{NULL} pointer. 
+  If instead, we wrote \code{return Set<T>::Iterator(this, tail);},
+  then by looking at what happens in our \code{main()} function above,
+  you'll notice that the last element of the set wouldn't be processed.
+\end{itemize}
+
+Again, notice how iterators let us go through all elements of a
+container without knowing any internal details about it. 
+Only the \code{Set<T>} and the \code{Set<T>::Iterator} need to know
+how \code{Set} is actually implemented.
+
+The implementation of an iterator for a \code{Set<T>} based on a linked
+list was pretty straightforward. If we think about how we would
+implement an iterator for a \code{Set<T>} built using an internal array,
+we would quickly discover that the iterator will store internally a
+pointer to the set, as well as an integer to be used as an array
+index. 
+Let's say that internally, our \code{ArraySet<T>} stores its data in a
+private array \code{T *a}.
+Now, the dereferencing would have to be of the form
+\begin{verbatim}
+T operator* () const
+{    return whoIBelongTo->a[current]; }
+\end{verbatim}
+
+This means that at the moment we want to return an item, we need
+access to a private variable in the data structure.
+Typically, we need to use \code{friend} access to ensure this, but
+when a class is defined within another (such as here
+\code{Set<T>::Iterator} inside \code{Set<T>}), it automatically is
+considered part of the parent class, and has full access to all the
+private and protected fields.
+
+\smallskip
+
+In our implementation, we only wrote a pre-increment operator. You may
+wonder how one would overload the post-increment one? After all, by
+writing 
+\begin{verbatim}
+Iterator operator++ () { ... }
+\end{verbatim}
+we'd be overloading the pre-increment one. How does C++ tell them
+apart? The answer is basically a hack. To implement the post-increment
+operator, you write
+\begin{verbatim}
+Iterator operator++ (int dummy) { ... }
+\end{verbatim}
+\code{dummy} is just a placeholder variable. You don't actually pass
+any integers into your \code{operator++}. It's just a way you tell C++
+\emph{which} operator you are overloading.
+
+Also, notice that if \code{T} were a struct, we may want to access its
+fields, so we may end up writing \code{(*it).field1} when
+dereferencing the iterator. Typically, we'd like to write instead
+\code{it->field1}. You can in fact do that if you overload the
+\code{->} iterator. What we gave here is the minimum functionality you
+should implement for your iterator, but if you at all think that
+you'll use it again later, or that other people may use it, you should
+implement a few more operators to make it look as much as possible as
+an actual pointer as you can.
+
+\section{The Bigger Picture}
+\subsection{Design Patterns}
+So far in this class, we had seen pretty standard ways for objects of
+different types to interact: inheritance, one class containing fields
+of another class's type, one class throwing a member of an
+\code{exception} class and that's about it.
+This is our first example of classes interacting in more complex ways:
+we have one class whose ``job'' it is to traverse another class and
+provide some functionality (access to elements) that is not naturally
+handled within the original class. In other words, we have abstracted
+one particular functionality out of one class into another.
+
+Once we absorb the ideas of object-oriented programming more fully, it
+becomes really fun to think about objects as each having their own
+identity, filling a role in a larger system of components, and
+interacting with each other in particular ways.
+Since the idea of an Iterator is fairly useful generally, it has been
+identified as one of many \todef{Design Patterns}.
+Design patterns are an important way of identifying frequently
+occurring ways in which objects interact, and they help in designing
+well-structured larger software systems that can be extended easily
+later. As such, they are an important part of the field of
+\todef{Software Engineering}.
+We will discuss them in a bit more detail in
+Chapter~\ref{chap:design-patterns}. 
+
+\subsection{Foreach, Map, Functional Programming, and Parallelization}
+We have seen that for essentially all data structures (e.g., ones in
+STL), we will now want to use iterators and write loops of the
+following form:
+
+\begin{verbatim}
+for (Iterator it = structure.begin(); it != structure.end(); ++it)
+   { 
+      // process *it
+   }
+\end{verbatim}
+
+Since the code will always have the exact same form, except for
+different ways of processing the elements, we could try to shortcut it
+even more. By implementing the processing of \code{*it} into a
+function \code{f}, we could implement a function:
+\begin{verbatim}
+void for_each (Iterator start, Iterator end, Function f)
+{
+  for (Iterator current = start; current != end; ++current)
+     f(*current);
+}
+\end{verbatim}
+
+In fact, C++ implements an almost identical function that has only a
+few small differences. To use C++'s function, your iterator has to
+inherit from the abstract class \code{iterator} (for which you 
+\code{\#include<iterator>}). You'll have to implement your function,
+and pass it in. You have already seen this basic idea of passing a
+function pointer in an earlier homework --- this is the first time we
+see it as a more general idea.
+
+While using the \code{for\_each} function would only save us a little bit of
+typing, it has a conceptual advantage: it clarifies what is going
+on in your code. For instance, by using this function, you are making
+it clear that you are simply applying the same function to each
+element, and there is no state transferred from one iteration to the
+next. In fact, this (and a few similar) types of structure appears so
+often that it comes pre-implemented like this in STL.
+
+This kind of construction, where you pass a function as a parameter to
+another function and then apply it inside, is one of the key
+constructs of \todef{functional programming}. 
+The particular case in which one function is applied to each element
+of a collection is called the \todef{map} paradigm. In other words,
+\code{for\_each} implements the map paradigm in C++.
+
+Thinking a little further, the map paradigm is half of the
+\todef{map-reduce} paradigm of parallel processing. This is one of the
+really popular techniques for massively parallelizing Big Data
+computations over large numbers (hundreds of thousands) of machines,
+at the heart of what Google and other companies do.
+The idea is to farm out a lot of parallel computation on individual
+elements to machines (via map), and then combine the results into the
+final output (called \todef{reduce}).
+If you use constructs such as \code{for\_each}, then you make it much
+easier for your code to be transferred into map-reduce code, and
+thus parallelized later. 
+Notice that this is where it comes in handy that the different
+iterations of the loop do not interact with each other, and we instead
+have each element processed by itself; by doing this, we ensure that
+the different parallel machines do not need to communicate with each
+other. (Network usage is slow.)
+
+In addition to the \code{for\_each} loop, if you use iterators, you
+also have some other standard functionality available: you can add up
+all elements, find the maximum, and a few others, simply by passing
+iterators into some pre-programmed functions. Check the textbook for
+some examples, in the context of the discussions of iterators and STL.

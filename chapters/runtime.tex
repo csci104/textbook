@@ -1,0 +1,548 @@
+A recurring theme throughout this class (and for that matter, much of
+your computer science study and career as a computer scientist) will be the following.
+When you design and implement data structures, you need to understand
+how efficiently they support different operations; this will let you
+decide which data structure is right for the particular task you have
+to perform. This means understanding what is good \emph{and bad} about
+a particular data structure.
+
+When analyzing the running time of certain operations, there are a lot
+of factors at play: How fast is the machine? What other processes are
+running? How much was an implementation optimized? How well did it fit
+the maching architecture?
+For that reason, measurements alone do not tell the whole story.
+While measuring running time empirically for a lot of different inputs
+is important, it must be complemented by a theoretical analysis.
+
+\section{Which running time?}
+What exactly do we mean when we talk about the running time of an
+algorithm?
+Even if we resolve such issues as what exactly we are counting, on
+what machines, etc., there is the much more fundamental issue of: which input?
+Clearly, if you have an algorithm that runs on arrays, its running
+time will depend on what is in the arrays, or at least on how big the
+arrays are.
+So what is really going on is that we have a function $T$ that maps
+inputs $I$ to the time it takes the algorithm, which we denote by $T(I)$. 
+A complete description of the algorithm's running time would simply
+list $T(I)$ for all inputs.
+The problem? There are infinitely many such $I$ (or at least a very
+large finite number), and unless there is a nice pattern,
+writing down all running times will be neither feasible nor helpful.
+So we would like to summarize all this information more concisely.
+
+Usually, the standard way is to group inputs together by size.
+Most inputs have a natural measure of size, such as the number of
+bytes in a file, or the number of entries in an array.
+We can then write $\mathcal{I}_n$ for the set of all inputs of size
+$n$. We would now like to define $T(n)$ as a ``summary'' of $T(I)$
+for all inputs $I \in \mathcal{I}_n$.
+Then, we could figure out how the running time will grow as the size
+of the input gets larger,
+which tells us how well our solution will scale to larger scenarios.
+
+So how should we combine the running times into one $T(n)$?
+There are three candidates that are probably most natural:
+worst case, best case, and average case.
+
+The best case would be defined as 
+$T_{\rm best}(n) = \min_{I \in \mathcal{I}_n} T(I)$.
+Best case clearly does not make much sense; imagine promising a prospective
+customer that if only he feeds your program the one input it was
+optimized for, it will run fast enough. Not a good selling point.
+Forget that the notion of ``best case'' exists!\footnote{The only
+  reason to consider a ``best case'' is the following: If you can show
+  that even in the best case, a proposed idea is very slow, then you
+  can clearly discard it without further consideration.}
+
+Average case is more meaningful. It would be defined as 
+$T_{\rm avg}(n) = \frac{1}{|\mathcal{I}_n|} \sum_{I \in \mathcal{I}_n} T(I)$.
+Average case also has downsides. 
+Imagine that you are writing the software for a self-driving car,
+which needs to react to a car in front of yours breaking. 
+Suppose that 99\% of the time, the software reacts in 0.01s, and 1\%
+of the time, it takes 30s. 
+On average, it takes much less than half a second.
+But would you like your car to crash 1\% of the time when someone
+breaks in front of you? 
+What is really going on is that when you analyze an average case,
+what you assume is that each input is equally likely, and that the
+average is the right measure for you. Those assumptions are sometimes
+true, but if you want to make them, you should be absolutely sure that
+they are right.
+There are cases when average case analysis is the right thing,
+and in fact, we will use it in Chapter~\ref{chap:skip-lists}, and in
+some sense also in Chapter~\ref{chap:hashing}.
+In those chapters, you might notice something else: average case
+analysis is often more technically difficult to carry out,
+though it can be a lot of fun if you like mathematical puzzles.
+
+For now, the running time we care about most is ``worst case.'' 
+The worst-case running time is defined as
+$T_{\rm worst}(n) = \max_{I \in \mathcal{I}_n} T(I)$.
+We will usually just write $T(n)$ for brevity,
+leaving out the ``worst'' subscript.
+If you do a worst-case analysis, you can confidently promise your
+customers (or collaborators) that your code \emph{never} takes more
+than a certain amount of time.
+That is the kind of useful guarantee you want.
+
+\section{The Value of Big-$O$ Notation}
+Next, we need to think about how exactly to report those worst-case
+running times. Which machine? Clearly, that can make a difference,
+as some computers are (much) faster than others.
+But in the end, it is not a property of your algorithm or data structure,
+so maybe performance should not be measured in seconds.
+How about we count operations that are performed?
+That sounds better, but it raises the question what an ``operation'' is.
+Different processors differ in whether they have a few simple
+operations (this is called RISC) from which you build up complex ones,
+or implement many complex operations.
+For instance, is \code{a[i] ++} one operation?
+Technically, we first have to read the value of \code{i},
+then use it to read the value of \code{a[i]},
+then increment it, and then write it back to its memory position.
+So four operations?
+More, depending on memory hierarchies?
+Quite a difficult decision.
+
+This kind of fine-grained analysis is quite cumbersome, and also does
+not tell us much about whether a data structure is actually good. 
+In order not to waste time on unimportant details,
+almost all theoretical analyses of running times of data structures and
+algorithms are carried out using big-$O$ notation. 
+Notice that big-$O$ notation is not tied to running time of algorithms
+--- you can apply it to other measures (like memory, communication
+bandwidth, dollars spent, etc.) as well.
+However, the analysis of running times is where computer scientists
+typically use big-$O$ analysis most frequently.
+Here is a refresher on what you should have learned by now in your
+discrete math class about big-$O$ notation:
+
+\begin{itemize}
+\item When we say that a function (call it $T(n)$) is
+$O(f(n))$, we mean that $T(n) \leq c \cdot f(n)$ for all $n$.
+So $T$ is never bigger than $f$ times a constant.
+\item When we say that $T$ is $\Omega(g(n))$,
+we mean that $T(n) \geq c' \cdot g(n)$ for all $n$.
+So $T$ is never less than $g$ times a constant $c' > 0$.
+\item Finally, we say that $T$ is $\Theta(f(n))$ if it is both
+  $O(f(n))$ and $\Omega(f(n))$. That means that up to constant
+  factors, $T$ and $f$ are the same function.
+\end{itemize}
+
+\begin{remark}
+Some textbooks and sources only require that the 
+inequalities hold for all $n \geq n_0$, for some $n_0$.
+The two definitions are the same whenever $T(n)$ is guaranteed to
+always be positive. The subtle distinction only matters if we consider
+functions that could be 0, which we will not do in this class.
+\end{remark}
+
+Big-$O$ allows us to be sloppy in a precise sense. 
+We know exactly what we are ignoring
+(constant factors, and thus also lower-order terms)
+and what we are keeping:
+the growth of $T$ as a function of $n$.
+The latter is the important part:
+we want to know how well our data structure or algorithm performs as
+the size (for example, number of items stored in a data structure) grows large. 
+That is exactly what big-$O$ notation is there for. 
+Whenever you analyze any kind of algorithm or data structure, 
+we recommend that you do not say that something takes ``$n$
+steps'', and instead say ``$\Theta(n)$ steps'' (or ``$O(n)$ steps''). 
+This makes clear that you understand that ``steps'' is an amorphous
+concept, and are focusing on the big picture.
+
+You should also keep in mind that big-$O$ notation is there to make
+your life easier.
+If you use it by first deriving precise bounds,
+and then simplifying them using the rules of big-$O$ notation,
+you are making your life more difficult,
+and not using the tool of big-$O$ correctly.
+
+\section{Obtaining Upper and Lower Bounds}
+Say that you have an algorithm, and you want to figure out a form of
+$T(n)$ that you can actually understand, and that helps you choose the
+``best'' algorithm. What is it that you need to do and prove?
+Here, we will look at this question a bit in the abstract,
+and in the next section, we will see how to do it in practice.
+First, let us ask ourselves why we care about lower bounds,
+and not just upper bounds, on running time.
+
+Suppose that you have two algorithms for the same problem.
+For one of the algorithms, you have shown that $n \leq T_1(n) \leq n^4$,
+and for the other, you have shown that $n^2 \leq T_2(n) \leq n^3$?
+(In reality, you would probably have shown that $T_1(n) = O(n^4)$ and
+$T_1(n) = \Omega(n)$, and $T_2(n) = O(n^3)$ and $T_2(n) = \Omega(n^2)$.)
+Now which algorithm is better?
+The answer is that we do not know. 
+For both implementations, there is just way too wide a range of
+possibilities, which include scenarios in which the first is better,
+and ones where the second one is better.
+Ideally, for each of the algorithms, you would like our upper and
+lower bounds to match, making a comparison possible. 
+That is the case when you get that $T(n) = \Theta(f(n))$ for some
+function $f$ that you can understand.
+
+Is it always possible to get matching bounds? 
+Yes, in principle.
+For each function (and thus also for $T(n)$, the worst-case running
+time of our algorithm), there is a correct answer: some $f$ such that
+the running time is $\Theta(f(n))$. Sometimes, determining this $f$
+can be quite complex, which is why sometimes, you might have upper and lower
+bounds that do not match. 
+In this class, typically, it will not be too hard. 
+
+Our first hope for determining $T(n)$ would be the following:
+for each $n$ just figure out the worst-case input $I$ of that size,
+and then count (in big-$O$ notation) the number of steps on input
+$I$. That would give us the running time.
+The problem with that approach is that figuring out the actual worst
+case can be very difficult or even impossible, since it may depend on
+a lot of things. Instead, we usually derive upper and lower bounds
+using different approaches.
+
+\begin{enumerate}
+\item To get an upper bound of $O(f(n))$, we have to show that for
+\emph{every} input $I \in \mathcal{I}_n$, the running time is at most
+$O(f(n))$.
+The way we do this is is to take an arbitrary input $I$, 
+and going through our code, counting (or upper-bounding) the number
+of operations.
+Along the way, to keep things simple enough on ourselves,
+we drop constant factors and terms that grow less fast than
+the dominant term. That way, we arrive at an \todef{upper bound} in
+big-$O$ notation for the worst-case running time.
+
+\item Students generally seem to be more mystified about using big-$\Omega$
+notation with worst-case running time. After all, big-$\Omega$ gives a
+\todef{lower bound}, so the natural (but wrong!) assumption is that
+this must involve proving that the running time is \emph{always at
+  least} some function $g(n)$. The mistake here is in the word
+``always.''
+If we write ``always,'' we are implicitly talking about the best-case
+running time.
+Or rather, the confusion probably arises because we substituted
+``running time'' for ``worst-case running time'';
+that is, we are trying to prove upper and lower bounds on the
+``running time.''
+As a slightly different illustration, suppose that instead of running
+time, we looked at students' heights, and ``worst-case'' means
+``tallest.'' Then, to prove that the worst case is large, we would just
+have to find at least one student who is very tall, not prove that all
+students are.
+
+So when we try to prove a lower bound on the 
+\todef{worst-case running time}, 
+it is enough to show that there is \emph{one case} of size
+$n$ (for each $n$) on which the algorithm takes $\Omega(g(n))$ steps.
+We recommend that you re-read the previous paragraph a few times, to
+make sure it sinks in correctly.
+
+The input on which we get a lower bound of $T(n) = \Omega(g(n))$ could
+be the worst case, which would be a good choice. But since we do not
+necessarily know the actual worst case, it is enough to have a ``pretty
+bad'' input, which takes almost as much time as the worst case.
+Often, finding a ``pretty bad'' input is much easier to do than
+finding an actual worst case.
+\end{enumerate}
+
+So when we have a data structure (or some other algorithm),
+we want to get upper and lower bounds.
+If we succeed in showing that $T(n) = O(f(n))$ and 
+$T(n) = \Omega(f(n))$ (for the same function $f$), we have shown that
+$T(n) = \Theta(f(n))$; at that point, we know essentially everything
+there is to know about the time for the algorithm or data structure:
+except for ignoring constant factors, we know that on the worst-case
+input of size $n$, the function will take a constant times $f(n)$
+steps.
+
+If we know that $T(n) = O(f(n))$ and $T(n) = \Omega(g(n))$, but $f$
+and $g$ are not the same, there are multiple alternatives:
+\begin{itemize}
+\item Our big-$O$ analysis was not careful enough, and the task is
+  actually performed in $O(g(n))$ steps. In that case, the algorithm
+  may be better than we first thought.
+\item Our big-$\Omega$ analysis was not careful enough, and there are
+  inputs on which it does take $\Omega(f(n))$ steps. Then, the
+  algorithm may be worse than we first thought.
+\item Something in between: maybe both our upper and lower bounds are
+  wrong, and the correct answer was something between, like
+  $\Theta(\sqrt{f(n) g(n)})$. 
+\end{itemize}
+
+To summarize once more: when you say that an algorithm's worst-case
+running time is $O(f(n))$, you say that it can never take more than
+$c \cdot f(n)$ steps. When you say that it is $\Omega(g(n))$, you say
+that there are some cases for which it is as bad as $c' \cdot g(n)$ steps.
+
+Here is a little question about these concepts.
+Could it be possible that the big-$\Omega$ bound is larger than the
+big-$O$ bound? For instance, could an  algorithm have a running time
+of $O(n^2)$ and $\Omega(n^3)$? 
+The answer is ``No'', as this would mean that it takes at most
+$c \cdot n^2$ in all cases, 
+and at least $c' \cdot n^3$ steps in some cases.
+Even when $c$ is much larger than $c'$, there will be a sufficiently
+large $n$ for which $c' \cdot n^3 > c \cdot n^2$.
+For such an $n$, the worst-case input would have to take
+more steps than any input can take, which is impossible.
+
+\section{Computing Upper Bounds in Practice}
+Hopefully, you now understand in the abstract what you need to do.
+If not, reread the previous section.
+This is something that it typically takes students a while to
+understand, but once you do, you will have crossed a barrier.
+
+But the previous section does not tell you how to actually carry out
+the process of upper-bounding the running time in practice.
+At a very basic level, what you are trying to do is count the number
+of steps, while simplifying.
+This motivates the following rules for deriving big-$O$ bounds:
+
+\begin{enumerate}
+\item If you have an elementary statement (like \code{a[i] ++;} or
+  \code{if (x==0) return -1; else return x*x;}), those take just some
+  constant number of steps, which we write as $O(1)$ or $\Theta(1)$.
+  How long they take does not depend on how large your input is.
+\item If you have two functions or code blocks for which you already
+  have determined the running times to be $T_1(n)$ and $T_2(n)$, and
+  you now have code that contains the two blocks in sequence, then you
+  just add the times: the running time is $T(n) = T_1(n)+T_2(n)$.
+\item This idea generalizes to loops. When you have a loop (say,
+  running $i$ from 0 to $n-1$), you execute $n$ separate code blocks,
+  one for $i=0$, one for $i=1$, and so on, up to $i=n-1$.
+  The total time for executing them is $T(n) = \sum_{i=0}^{n-1} T_i(n)$.
+  Notice that we added another variable $i$ to our running time as a
+  subscript: the time to run the block for a particular $i$ will often
+  (not always, though) depend on the value $i$.
+\item When you have a statement
+  \code{if (condition) { Block1 } else { Block2 }}, you need to know
+  how long the two blocks take; let us call these $T_1(n)$ and $T_2(n)$.
+  In some cases, evaluating the condition also involves significant
+  computation, so let us call that running time $T_{\text{cond}}(n)$.
+  Because the analysis is worst-case, we assume that whichever of the
+  two running times $T_1(n), T_2(n)$ is worse is the one that will be
+  actually executed, so the running time is
+  $T(n) = T_{\text{cond}}(n) + \max(T_1(n), T_2(n))$.
+  If you are somewhat familiar with big-$O$ notation,
+  you will remember that $\max(T_1(n), T_2(n)) = \Theta(T_1(n)+T_2(n))$.
+  Oftehn, this simplification is correct, but unfortunately,
+  there are cases when the constant factor matters, most importantly
+  when you combine \code{if} statements with recursion.
+\item Recursive functions can be a bit challenging to analyze.
+  Typically, when the function is called with an input of size $n$,
+  it performs some internal computation, which takes total time $f(n)$.
+  It also calls itself once or more on smaller inputs.
+  Suppose that those recursive calls are on inputs of sizes 
+  $n_1, n_2, \ldots, n_k$ (think of $k=2$, meaning two recursive
+  calls).
+
+  How long will those recursive calls take?
+  We do not know for real, but we have a name for how long they take.
+  In the worst case, they will take
+  at most $T(n_1), T(n_2), \ldots, T(n_k)$ steps.
+  This means that we know that 
+  $T(n) \leq f(n) + T(n_1) + T(n_2) + \ldots + T(n_k)$.
+  This kind of relationship is called a \todef{recurrence
+    relation} for describing the running time of the recursion.
+  Setting up this recurrence relation is always the first step in
+  analyzing a recursive function. The second is \emph{solving} the
+  recurrence, which can sometimes be hard. But setting it up at least
+  shows that you understood how to calculate running times, even if
+  the actual math is difficult.
+\end{enumerate}
+
+The typical way to go about using these general techniques is to first
+set up one or more sums (if you have one or more nested loops)
+or to set up the recurrence relation, simplifying them as much as possible.
+Always do this as a first step, even if you do not know yet how to solve them.
+
+The second step is then to determine the value of what you have set up
+(the sum or recurrence). Sometimes, that is pretty straightforward;
+other times, it can be very challenging.
+For dealing with sums, the following are important to remember:
+
+\begin{itemize}
+\item $\sum_{i=1}^n i = \frac{n(n+1)}{2} = \Theta(n^2)$.
+This is called an \todef{arithmetic series}, and you \emph{must} know it as a
+computer scientist.
+More generally, $\sum_{i=1}^n \Theta(i^p) = \Theta(n^{p+1})$.
+(The rule to remember is that sums behave roughly like integrals.)
+\item $\sum_{i=0}^n c^i = \frac{c^{n+1}-1}{c-1} = \Theta(c^n)$.
+This is the \todef{geometric series}, and as a computer scientist, you
+\emph{must} know it.
+\item $\sum_{i=1}^n 1/i = \Theta(\log n)$.
+  This is called the \todef{harmonic series}, and is also often useful.
+\end{itemize}
+
+For dealing with recurrences, we will see a few examples and basic
+techniques later in the semester when we get to recursive sorting
+algorithms.
+You will learn this more in depth in your algorithms class, where you
+will learn general theorems for dealing with many types of recurrences.
+
+\section{Some Examples}
+As a first example, consider the following piece of code.
+\begin{verbatim}
+for (int i = 0; i < n; i ++)
+    for (int j = 0; j < n; j ++)
+       a[i][j] = i*j;
+\end{verbatim}
+The rules we saw above suggest analyzing the piece of code inside out.
+The line \code{a[i][j] = i*j} takes time $\Theta(1)$.
+The inner loop runs over $n$ values of $j$, and $T_j(n) = \Theta(1)$
+as we saw. 
+So the inner loop takes $T'_i(n) = \sum_{j=0}^{n-1} \Theta(1)$.
+The outer loop runs over $n$ values of $i$, and takes
+$\sum_{i=0}^{n-1} T'_i(n) = \sum_{i=0}^{n-1} \sum_{j=0}^{n-1} \Theta(1)$.
+We have successfully set up the sum, and next, we need to evaluate it.
+
+Fortunately, this one is pretty easy to evaluate:
+$\sum_{j=0}^{n-1} \Theta(1) = n \cdot \Theta(1) = \Theta(n)$ for the
+inner sum. Now, the outer sum is 
+$\sum_{i=0}^{n-1} \Theta(n) = n \cdot \Theta(n) = \Theta(n^2)$.
+So the upper bound is $O(n^2)$. In fact, since there is no input,
+every input is worst case, and our entire analysis was in $\Theta()$
+from the start. We got a running time of $\Theta(n^2)$.
+This example was particularly easy because the running time of the
+inner loop did not depend on $i$.
+
+\smallskip
+
+Let us do a second example, slightly more interesting:
+\begin{verbatim}
+for (int i = 0; i < n; i ++)
+    if (a[i][0] == 0)
+       for (int j = 0; j < i; j ++)
+           a[i][j] = i*j;
+\end{verbatim}
+There are two small changes: we added the \code{if} statement, and the
+inner loop only runs up to $i$.
+The beginning of our analysis stays the same:
+the innermost statement takes $\Theta(1)$.
+But now, when we calculate the running time of the inner loop, we get 
+$T'_i(n) = \sum_{j=0}^{i-1} \Theta(1)$.
+Next, we go one level further out, to the \code{if} statement.
+What does that do? It means that there are some inputs on which the
+last 3 lines do not take $T'_i(n)$ steps, but only a constant number,
+namely, when $a[i][0] \neq 0$. So we need to convince ourselves that
+this part still takes $\Theta(\sum_{j=0}^{i-1} \Theta(1))$.
+
+The upper bound $O(\sum_{j=0}^{i-1} \Theta(1))$ is clear,
+because we at most add a constant number of operations for the check.
+(In other words, using the \code{if} rule from above, $T_{\text{cond}}(n) = O(1)$.)
+For the lower bound $\Omega(\sum_{j=0}^{i-1} \Theta(1))$,
+we want to find an input where the algorithm indeed executes the inner
+loop every time. 
+That is not too hard: if we pick a ``bad case'' input on which $a[i][0] =0$
+for all $i$, the algorithm does execute that loop.
+So we have convinced ourselves that the stuff inside the outer loop
+takes $\Theta(\sum_{j=0}^{i-1} \Theta(1))$. 
+
+So now, we can again look at the outer loop,
+and sum up the times for what happens inside the loop, which gives us
+$\sum_{i=0}^{n-1} \Theta(\sum_{j=0}^{i-1} \Theta(1))$.
+So we have set up the sum.
+The second step is to actually evaluate it.
+
+The sum can be simplified a bit, by getting rid of one of the
+$\Theta$, which is unnecessary, and noticing that 
+$\sum_{j=0}^{i-1} \Theta(1) = \Theta(i)$.
+So now we have $\Theta(\sum_{i=0}^{n-1} i)$.
+That is where one of our sum formulas comes in and tells us that the
+result is $\Theta(n^2)$.
+So we again proved a tight bound of $\Theta(n^2)$.
+
+\smallskip
+
+At this point, you might start to suspect that any time you have two
+nested loops, the answer is $\Theta(n^2)$. Or maybe at least the
+product of how often they run.
+Unfortunately, this is not true, and it is a mistake made by many many
+students.
+Please be sure to understand this well enough to avoid.
+Here is an example that shows what can happen.
+
+\begin{verbatim}
+for (int i = 1; i < n; i = i*2)
+    for (int j = 0; j < i; j ++)
+        a[i][j] = i*j;
+\end{verbatim}
+
+As before, the inner step takes $\Theta(1)$,
+so the inner loop takes time $\sum_{j=0}^i \Theta(1) = \Theta(i)$. 
+But now, the outer loop is a bit more interesting.
+It does not run over all $i$, since instead of \code{i++}, we wrote
+\code{i=i*2}. It only runs over powers of 2.
+So the running time we get is
+$\Theta(1) + \Theta(2) + \Theta(4) + \Theta(8) + \ldots + \Theta(n)$.
+What is the value of that?
+
+Let us first see how many terms are in this sum.
+Since the algorithm doubles $i$ each time,
+there are $\log(n)$ terms (up to rounding up or down).
+We can write those terms as $2^0, 2^1, 2^2, \ldots, 2^{\log(n)}$.
+So the running time is $\sum_{k=0}^{\log(n)} \Theta(2^k)$.
+We have set up our sum, and now need to evaluate it.
+
+To evaluate the sum, we see that we can apply the geometric series formula,
+which tells us that
+$\sum_{k=0}^{\log(n)} \Theta(2^k) = 
+\Theta(\sum_{k=0}^{\log(n)} 2^k) = \Theta(2^{\log(n)}) = \Theta(n)$.
+So the running time is linear, even though we have two nested loops!
+Make sure you understand what happened here. 
+
+\smallskip
+
+As a final example, let us look at setting up a recurrence relation.
+Here is a piece of code that actually does something semi-useful.
+(It may amuse you to find out what.)
+
+\begin{verbatim}
+int *a;
+
+void f (int l, int r, int d)
+{
+  for (int i = l; i <= r; i ++)
+      a[i] += d;
+  if (r > l)
+    {
+       f(l, (l+r)/2, 0);
+       f((l+r)/2+1, r, 1);
+    }
+}
+
+int main ()
+{
+  a = new int[n];   // assume n is a power of 2
+  for (int i = 0; i < n; i ++) a[i] = 0;
+  f(0, n-1, 0);
+  return 0;
+}
+\end{verbatim}
+
+For quick practice, let us analyze \code{main}.
+The loop takes $\Theta(n)$, the return statement $\Theta(1)$.
+The declaration of \code{a} takes $\Theta(1)$, so the total
+is $\Theta(n)$, plus whatever time \code{f} takes. 
+We need to find out what that time is.
+
+Let $T(l, r, d)$ be the running time of \code{f} on inputs $l, r, d$.
+There are three variables, more than what we are used to.
+First, we notice that $d$ does not really affect the running time at
+all, since it is just added to some values. So we can omit it.
+Next, we notice that \code{f} seems to run a loop from $l$ to $r$,
+so the running time depends on $r-l$, but not on the specific values
+of $l$ and $t$. Let us write $k=r-l$.
+Then the \code{for} loop in the function takes time $\Theta(k)$.
+And the two recursive calls have regions of size $k/2$ each.
+Because there are two recursive calls, we get the recurrence
+relation $T(k) = \Theta(k) + T(k/2) + T(k/2) = \Theta(k) + 2T(k/2)$.
+
+You do not know yet how to solve this, but you will learn it in
+Chapter~\ref{chap:sorting}.
+Notice that setting up the recurrence already was half the work,
+and showed that we understood what was going on in terms of
+running time.

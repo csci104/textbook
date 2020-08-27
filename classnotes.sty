@@ -1,0 +1,39 @@
+\ProvidesPackage{classnotes}
+
+\usepackage{amssymb}
+\usepackage{xspace}
+\usepackage{ifthen}
+\usepackage{fullpage}
+%\usepackage{definitions}
+
+% Put in the header of your scribe notes the following:
+% \scribes{Your Names}
+% \topic{The topic of that day's lecture}
+% \lecturedate{The date of the lecture}
+% Then, inside the document, call \makeheader
+
+\newcommand{\code}[1]{\texttt{#1}}
+\renewcommand{\abstractname}{Lecture Summary}
+
+\newcommand{\@scribes}{}
+\newcommand{\scribes}[1]{\renewcommand{\@scribes}{#1}}
+
+\newcommand{\@topic}{}
+\newcommand{\topic}[1]{\renewcommand{\@topic}{#1}}
+
+\newcommand{\@lecturedate}{}
+\newcommand{\lecturedate}[1]{\renewcommand{\@lecturedate}{#1}}
+
+\newcommand{\makeheader}{
+\begin{center}
+\renewcommand{\fboxsep}{0.5cm}
+%\renewcommand{\fboxrule}{1mm}
+\fbox{\begin{minipage}{6in}
+\large \bf
+CS104:  Data Structures and Object-Oriented Design (Spring 2014)\\[0.5ex]
+\@lecturedate: \@topic\\[0.5ex]
+Scribes: \@scribes
+\end{minipage}}
+\end{center}
+\bigskip
+}

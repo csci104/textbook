@@ -1,0 +1,280 @@
+In Chapter~\ref{chap:running-time}, we stressed the importance of
+summing all steps that an algorithm performs, in order to accurately
+evaluate its running time.
+While we can sometimes use shortcuts such as multiplying the number of
+iterations of a loop with the cost per iteration,
+this shortcut can give wrong answers, in particlar,
+if different iterations can have vastly different running times.
+
+We promptly saw an example illustrating this in the analysis of array
+implementations of the \code{List} data type:
+if we execute \code{push\_back}%
+\footnote{We talked about the \code{insert} operation,
+  but our analysis showed that if we inserted at the end of the array,
+  the time was $O(1)$; this is what \code{push\_back} does.}
+repeatedly on a list, the insertion each time takes $O(1)$,
+but there is the risk of an expensive $\Theta(n)$ array resize happening.
+So the worst-case time we could guarantee per \code{push\_back}
+operation was $\Theta(n)$.
+Yet, we also claimed that any sequence of $n$ \code{push\_back}
+operations takes only $\Theta(n)$ time in total,
+so the average cost per operation is $O(1)$.
+
+We mentioned there that this average is not taken over random \emph{inputs},
+but rather over multiple worst-case operations in sequence.
+We therefore call it not ``average-case'' running time
+(which is what you analyze if you assume that inputs are random),
+but \todef{amortized} running time.%
+\footnote{\todef{Amortization} is a concept from economics, where
+  roughly speaking, we consider a big one-time expense against all the
+  savings that it will cause further down the road.}
+When we talk about the amortized worst-case time,
+we always think about a \emph{sequence} of operations being executed,
+and the amortized worst-case time is then the maximum time per operation,
+averaged over the operations in this sequence.
+We then consider the worst case over all sequences. 
+
+Amortized worst-case guarantees are, theoretically speaking,
+somewhat weaker than absolute worst-case guarantees per operation,
+but in practice, we are typically quite happy if expensive operations
+can happen, but are rare enough not to matter in the average sense.
+Of course, whether this is true in a particular case depends on the
+application, so for each application you face,
+you will want to consider whether an amortized guarantee is sufficient.
+
+Later on (in particular, in Chapters~\ref{chap:LSM} and
+\ref{chap:splay-trees}),
+we will see data structures with amortized worst-case guarantees.
+For now, we will practice on some simple examples,
+in no small part because understanding amortized analysis will really
+help you grasp the fundamentals of ``standard'' running time analysis better.
+
+\section{Two Ways of Analyzing Amortized Running Time}
+
+There are two natural ways of analyzing amortized running time.
+One is pretty much a direct application of standard running time analysis,
+and will here mostly serve to illustrate standard running time
+analysis more carefully.
+It can be a bit easier when it works, but typically will be too
+cumbersome for sufficiently complex data structures.
+The other treats running time as ``money,'' and uses credit schemes.
+It is a bit counter-intuitive at first, but can be very fun once well understood,
+and is the way you need to go when analyzing more complex data
+structures (such as Splay Trees, Fibonacci Heaps, etc.).
+
+For the first way, we simply consider any sequence of $m$ operations
+(starting with an empty data structure),
+and in order to count the total time for all of the $m$ operations,
+we keep track of how many of them take 1 step, 2 steps, 3 steps,
+etc.~(up to whatever maximum $M$ we know will never be exceeded).
+Then, we hope that the resulting sum 
+$\sum_{k=1}^M k \cdot [\mbox{number of operations taking $k$ steps}]$
+is something we can calculate exactly or at least bound tightly.
+
+For the second way, we treat time as though it were money.
+Instead of thinking of the computer taking one unit of time per operation,
+we can think of paying someone one dollar per operation.
+This way, the total amount of money we spend corresponds precisely to
+the total amount of time an algorithm takes.
+But one thing we can do with money that makes less sense in terms of
+time is to ``pre-pay'' for later operations.
+When we know that a particular step takes, say, two operations, we can
+pay our person four dollars instead.
+This puts two dollars of credit into an account,
+which we can use to pay for later, expensive operations.
+This way, at any given point in time, the total amount we have paid is
+no less than the total time the program has used.
+If there is a lot of money left over in our credit account at the end,
+then we have overestimated the total amount of time with our
+accounting scheme, but we still get a valid \emph{upper bound} on 
+the running time, which is typically what we are looking for.
+
+When we pursue the credit scheme, we sometimes just think of one big
+account into which all money is deposited, and from which operations
+are being paid for. But even more often, we think of each element of
+the data structure having its own little credit account, which is used
+to pay for operations that it is a part of.
+
+If this idea of ``pre-paying time'' seems to be a little strange to
+you right now (after all, we cannot make a later operation take less
+time just by ``wasting'' time on the earlier operations),
+notice that what we are really doing here is grouping the terms of the
+sum describing the running time differently --- we are just hiding
+this arithmetic under a more intuitive layer we call credits.
+As an example, supposed that we perform four operations, each costing 1,
+followed by one operation costing five.
+Then, the total time is $1+1+1+1+5 = 9$.
+We can also rewrite the 5 as $5=1+1+1+1+1$,
+and then regroup as 
+\[ 1+1+1+1+5 \; = \;
+1+1+1+1+(1+1+1+1+1) \; = \;
+2+2+2+2+1 \; = \; 9.\]
+In the last step, we took four of the ones from the parentheses and
+paired them up with one of the earlier ones each, giving us 2 for each
+of those. This is what happens implicitly when we pretend that each of
+the earlier operations cost 2 instead of 1. 
+If the expensive (5) operation had never come, then our estimate of 8
+for the first four operations would have been an overestimate,
+but at least it would not have been wrong as an upper bound.
+
+We will look at two simple examples (array resizing and a binary
+counter) in this chapter, and then see a slightly more complex example
+in Chapter~\ref{chap:LSM}, building up to the most
+interesting case, Splay Trees (in Chapter~\ref{chap:splay-trees}).
+
+\section{Revisiting Array Resizing}
+As our first example, let us look more carefully at the array resizing
+argument that we were being handwavy about in
+Chapter~\ref{chap:arraylists}.
+Let us practice both ways of analyzing amortized running time on this simple example.
+
+For the first approach, we notice that whenever the current array size
+$k$ was a power of 2,
+the array gets doubled, giving us a cost of $\Theta(k)$.
+In all other cases, \code{push\_back} just takes constant time $\Theta(1)$.
+So we can write the total running time of $n$ operations (increasing
+the array size from $1$ to roughly $n$ 
+($2^{\Ceiling{\log n}}$, to be precise)) as follows:
+\begin{align*}
+\sum_{k=1,\text{$k$ is a power of 2}}^n \Theta(k) + 
+\sum_{k=1,\text{$k$ is not a power of 2}}^n \Theta(1)
+& = 
+\sum_{i=0}^{\Floor{\log n}} (\Theta(2^i) - \Theta(1))
++ \sum_{k=1}^n \Theta(1)\\
+& = \Theta(\sum_{i=0}^{\log n} 2^i) + \Theta(n).
+\end{align*}
+In the first step, we just rewrite the powers of 2. 
+We also add a $\Theta(1)$ term for each power of 2 into the second sum,
+and subtract them back out with the $-\Theta(1)$ in the first sum. 
+The lower-order $\Theta(1)$ terms can then be dropped from the first sum.
+Finally, notice that the remaining sum is a geometric series,
+and evaluates to 
+$\sum_{i=0}^{\log n} 2^i = \Theta(2^{\log n}) = \Theta(n)$. 
+So the total cost of all the \code{push\_back} operations is $\Theta(n)$. 
+Since there are $n$ of them,
+each operation's amortized cost is $\Theta(1)$.
+
+\smallskip
+
+Let us redo the analysis with a credit scheme.
+Every time we push back an element into the list, we pay 3 units for it.
+One unit pays for the actual current operation,
+while the other two are put into a credit account.
+When the array needs to be resized,
+we have some number $n$ of elements in it.
+At that point, we use the accumulated credits in the account to pay
+for the copying of the elements into the new array. 
+So the question is: do we have enough credit to pay for all of the
+copying of $n$ elements? 
+
+The most recent doubling must have happened when the array had size
+$n/2$. Since then, we have added $n/2$ elements, and each paid an
+extra 2 credits into the account when it was added. So we have $n$
+credits, which is enough to pay for constant-time operations for all
+of the $n$ elements. Afterwards, of course, the credit account is
+empty, but that is fine, since we will have a lot of time to collect
+more credits before we need to double the array again.
+
+\section{A Binary Counter}
+\label{sec:amortized:binary-counter}
+
+For our second example, we analyze an $n$-bit binary counter. 
+The counter has only two operations:
+\code{reset} (setting it to 0), and \code{advance},
+which increments it by 1.
+It is stored internally as an array of $n$ bits.
+Recall that to increment a binary number,
+you add 1 to its last (least significant) digit.
+If that digit was 1, it becomes 0 and a 1 is carried to the next
+higher bit, where we continue in the same way.
+
+When the counter's current state is $0111\ldots 1111$, then this
+sequence will result in $n$ operations, and a final state of
+$1000\ldots0000$, so the worst case time for an \code{advance}
+operation is $\Theta(n)$. But such cases are very rare, and we hope
+that the amortized cost might be much better. For instance, whenever
+the current counter value is even (which is half the time), the last
+digit will be a `0', meaning that the cost is only $\Theta(1)$.
+Again, let us try to analyze the amortized worst-case time per
+operation using both of the techniques we discussed.
+
+Suppose that we have incremented the counter $m$ times. 
+Every time the counter had `0' as its last digit
+(which was half the time), this cost 1 unit.
+When the last digits were `01' (a quarter of the time), it cost 2.
+When the last digits were `011' (one eighth of the time), it cost 3.
+More generally, a $2^{-k}$ fraction of the time, it cost $k$.
+Thus, the total cost was at most
+(we pretend here that $m$ is a power of 2 ---
+if not, nothing much changes, except we have to write a few floors,
+and the bounds are marginally better)
+$\sum_{k=0}^{\log m} k \cdot m/2^{k} 
+= m \cdot \sum_{k=0}^{\log m} k \cdot 2^{-k}$. 
+You probably have not yet learned how to evaluate the sum
+$\sum_{k=0}^t k \cdot 2^{-k}$.
+(It was not among the three that every computer scientist has to have memorized.)
+There are a few ways to deal with sums you do not know,
+none if which is guaranteed to always work. 
+\begin{itemize}
+\item You can approximate them with an integral, which is often a bit
+  easier to work out.
+  (In this case, it would require integration by parts.)
+\item You can learn about the finite calculus framework.
+\item You have a few regular tricks that you try
+  (the most important of which is changing the order of summation),
+  and hope one of them works.
+\item You ask Mathematica or Alpha for help,
+  and then just prove the result by induction
+  (which is often easier than guessing the result in the first place).
+\end{itemize}
+
+Here, if you are interested in seeing the derivation,
+is one way to evaluate this sum; this method can be
+easily adapted to powers other than $\frac{1}{2}$.
+(There are several other ways of evaluating this sum, too.)
+\[ \begin{array}{lcl}
+\sum_{k=0}^{t} k \cdot 2^{-k}
+& = & \sum_{k=0}^{t} 2^{-k} \cdot \sum_{i=0}^{k-1} 1
+\; = \; \sum_{k,i: 0 \leq i < k \leq t} 2^{-k}
+\; = \; \sum_{i=0}^{t - 1} \sum_{k=i+1}^{t} 2^{-k}\\
+& \stackrel{\mbox{geometric series}}{=} &
+  \sum_{i=0}^{t - 1} 2 \cdot ((1-2^{-(t + 1)}) - (1-2^{-i}))
+\; = \; \sum_{i=0}^{t - 1} (2\cdot 2^{-i} - \frac{1}{2^t})\\
+& \stackrel{\mbox{geometric series}}{=} &
+  2 - \frac{2}{2^t} - \frac{t}{2^t}
+\; = \; 2 - \frac{2+t}{2^t}.
+\end{array} \]
+
+So we see that the total cost for the $m$ operations is at most $2m$,
+which gives us an amortized worst-case cost per operation of $O(1)$.
+
+\smallskip
+
+As for the previous example, we redo the analysis with a credit scheme.
+This time, whenever we perform an increment,
+we create a digit of 1, which is added to the least significant digit.
+(Think of this as carrying a 1 even in the very first step.)
+When we create a digit of 1, we pay \$2:
+one dollar for the creation of the digit and the final write operation of this
+step, and one more dollar to give to this specific digit 1 as a credit.
+We will maintain the invariant that each 1 in the counter has a credit
+of one dollar at each time step.
+Initially, when the counter is all 0,
+there are no ones, so the invariant holds trivially.
+When we increment a counter, consider a digit of 1 that must be
+added somewhere, in position $i$.
+If the digit currently in position $i$ is a 0,
+then the addition takes constant time, and the computation is done. 
+This constant time was paid for with the first dollar. 
+If the digit in position $i$ was a 1, then we overwrite it with 0,
+and create a new 1 which is carried to the next higher digit $i+1$.
+At this point, notice that both the 1 digit in position $i$ and the 1
+digit that was carried into position $i$ had one dollar each.
+With their combined 2 dollars, we use one dollar to write the digit of 0 into
+position $i$;
+the other dollar is given to the new carried digit of 1 to take
+along and use later.
+This way, we ensure that the invariant is maintained at all times.
+
+This is another way to show that the amortized cost per \code{advance}
+operation is $O(1)$.

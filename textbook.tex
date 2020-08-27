@@ -1,0 +1,278 @@
+\documentclass{book}
+
+\usepackage{graphicx}
+\usepackage{epsfig}
+\usepackage{algorithm}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{psfrag}
+\usepackage[dvips]{color}
+\usepackage{pstricks,pst-node,pst-plot,pst-tree}
+\usepackage{hyperref}
+
+
+\title{Class Notes for CSCI 104: Data Structures and Object-Oriented Design}
+\author{David Kempe and the awesome Fall 2013 Course Producers}
+
+\begin{document}
+
+\input{localdefs}
+
+\begin{titlepage}
+\maketitle
+\end{titlepage}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter*{Preface}
+\label{chap:preface}
+
+\input{chapters/preface}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\tableofcontents
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Overview: Why Data Structures and Object-Oriented Thinking}
+\label{chap:overview}
+[Note: This chapter covers material of about 0.75 lectures.]
+
+\input{chapters/overview}
+%\input{overview-problems}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Memory and Its Allocation}
+\label{chap:dynamic-memory}
+[Note: this chapter covers material of about 1 lecture.]
+
+\input{chapters/dynamic-memory}
+%\input{dynamic-memory-problems}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Strings and Streams: A Brief Review}
+\label{chap:strings-streams}
+[Note: This chapter covers material of about 0.25 lectures.]
+
+\input{chapters/strings-streams}
+% \input{strings-streams-problems}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Recursion}
+\label{chap:recursion}
+[Note: this chapter covers material of about 1.5 lectures.]
+
+\input{chapters/recursion}
+% \input{recursion-problems}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Linked Lists}
+\label{chap:linked-lists}
+[Note: this chapter covers material of about 1 lecture.]
+
+\input{chapters/linked-lists}
+% \input{linked-lists-problems}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Abstract Data Types}
+\label{chap:ADTs}
+[Note: this chapter covers material of about 0.5 lectures.]
+
+\input{chapters/abstract-data-types}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Classes and Objects}
+\label{chap:classes}
+[Note: this chapter covers material of about 0.5 lectures.]
+
+\input{chapters/classes}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Analysis of Running Time}
+\label{chap:running-time}
+[Note: this chapter covers material of about 1 lecture.]
+
+\input{chapters/runtime}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Array Lists}
+\label{chap:arraylists}
+[Note: this chapter covers material of about 0.5 lectures.]
+
+\input{chapters/array-lists}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Amortized Running Time}
+\label{chap:amortized}
+[Note: this chapter covers material of about 0.5 lectures.]
+
+\input{chapters/amortized-runtime}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Stacks and Queues}
+\label{chap:stacksqueues}
+[Note: this chapter covers material of about 0.75 lectures.]
+
+% need to add number for Abstruse Goose comic
+
+\input{chapters/stacks-queues}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Operator Overloading and Copy Constructors}
+\label{chap:overloading}
+[Note: this chapter covers material of about 1 lecture.]
+
+\input{chapters/overloading}
+
+% edited up to here
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Inheritance and Polymorphism}
+\label{chap:inheritance}
+[Note: this chapter covers material of about 1 lecture.]
+
+\input{chapters/inheritance-polymorphism}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{C++ Standard Template Library}
+\label{chap:STL}
+[Note: this chapter covers material of about 0.5 lectures.]
+
+\input{chapters/standard-template-library}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Error Handling and Exceptions}
+\label{chap:exceptions}
+[Note: this chapter covers material of about 0.5 lectures.]
+
+\input{chapters/exceptions}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Searching Lists and Keeping them Sorted}
+\label{chap:searching}
+[Note: this chapter covers material of about 0.5 lectures.]
+
+\input{chapters/searching}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Sorting Algorithms}
+\label{chap:sorting}
+[Note: this chapter covers material of about 2 lectures.]
+
+\input{chapters/sorting}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Templates}
+\label{chap:templates}
+[Note: this chapter covers material of about 0.5 lectures.]
+
+\input{chapters/templates}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Graphs: An Introduction}
+\label{chap:graph-basics}
+[Note: this chapter covers material of about 2 lectures.]
+
+\input{chapters/graphs}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Trees and Tree Search}
+\label{chap:trees}
+[Note: this chapter covers material of about 1 lecture.]
+
+\input{chapters/trees}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Priority Queues and Heaps}
+\label{chap:priority-queues}
+[Note: this chapter covers material of about 1 lecture.]
+
+\input{chapters/priority-queues-heaps}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Dijkstra's Algorithm and $A^*$ Search}
+\label{chap:dijkstra}
+[Note: this chapter covers material of about 1 lecture.]
+
+\input{chapters/dijkstras-algorithm}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{2--3 Trees}
+\label{chap:B-trees}
+[Note: this chapter covers material of about 1 lecture.]
+
+\input{chapters/b-trees}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{General B Trees and Red-Black Trees}
+\label{chap:red-black-trees}
+[Note: this chapter covers material of about 1 lecture.]
+
+\input{chapters/red-black-trees}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{AVL Trees}
+\label{chap:AVL-trees}
+[Note: this chapter covers material of about 1 lecture.]
+
+\input{chapters/avl-trees}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Tries and Suffix Trees}
+\label{chap:tries}
+[Note: this chapter covers material of about 1 lecture.]
+
+\input{chapters/tries}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Hashtables}
+\label{chap:hashing}
+[Note: this chapter covers material of about 2.5 lectures.]
+
+\input{chapters/hashing}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Log-Structured Merge Trees}
+\label{chap:LSM}
+[Note: this chapter covers material of about 0.5 lectures.]
+
+\input{chapters/log-structured-merge-trees}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Splay Trees}
+\label{chap:splay-trees}
+[Note: this chapter covers material of about 1 lecture.]
+
+\input{chapters/splay-trees}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Skip Lists (*)}
+\label{chap:skip-lists}
+[Note: this chapter covers material of about 1 lecture.]
+
+\input{chapters/skip-lists}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Comparison of Map Implementations}
+\label{sec:map-comparison}
+
+\input{chapters/map-comparison}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Iterators (*)}
+\label{chap:iterators}
+[Note: this chapter covers material of about 1 lecture.]
+
+\input{chapters/iterators}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Design Patterns (*)}
+\label{chap:design-patterns}
+[Note: this chapter covers material of about 0.5 lectures.]
+
+\input{chapters/design-patterns}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\end{document}

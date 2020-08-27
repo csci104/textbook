@@ -1,0 +1,162 @@
+As part of solving various assignments,
+you will frequently need to read and process strings,
+and input and output in C++ are typically handled using streams.
+While you should have learned these in your introductory programing
+class, we will give a brief review here, focusing on issues that seem
+to often cause students difficulties.
+You can look up exact syntax in your introductory C++ textbook or
+online.
+
+\section{Strings}
+In basic C, string are implemented just as arrays of characters. 
+There is no separate string type. 
+This means that you need to allocate enough space for your character
+array to hold any input string that you might receive.
+It also means that you need a special way of marking how much of that
+array you are \emph{actually} using: just because you allocated, say,
+80 characters in your string does not mean you will always use all 80.
+The way C does this is by having a special role for the character
+\code{\textbackslash{}0}.
+(That's the character number 0, not the actual character `0'.)
+It marks the end of the used part of the string.
+
+The \code{string} class in C++ is a little easier to use:
+in particular, it hides some of the memory management for you,
+so that you don't have to worry about allocating enough space.
+It also implements some operators that you will frequently use, such
+as \code{=} (assignment), \code{==} (comparison) and \code{+}
+(appending strings). 
+The \code{string} class also contains a number of other very useful
+functions. Since you will be doing a lot of processing of data you are
+reading in from files in this class, you can probably save yourself a
+lot of work by reviewing the \code{string} class and its features.
+
+One string function which is really useful in C,
+but to our knowledge does not have an equivalent in C++ in standard
+implementations, is \code{strtok}.
+It allows you to tokenize a string, i.e., break it into smaller chunks
+using any set of characters as separators.
+Check it out!
+
+\section{Streams}
+Streams are the C++ ways of interacting with files, keyboard, screen,
+and also with strings.
+There are streams you read (keyboard, files, strings)
+and streams you write (screen, files, strings).
+In all cases, they are basically a sequence of characters
+that you are extracting from (read) or inserting into (write).
+They are a fairly clean abstraction of reading and writing ``items''
+one by one.
+
+The standard streams you will be interacting with are given in
+Table~\ref{tab:streams}. 
+They require you to \code{\#{}include} different header files, also
+listed here.
+
+\begin{table}[htb]
+\begin{tabular}{l|l|l}
+Stream & Target & Header File \\ \hline
+\code{cin} & Keyboard & \code{iostream} \\
+\code{cout}, \code{cerr} & Screen & \code{iostream} \\
+\code{ifstream} & File to read & \code{fstream} \\
+\code{ofstream} & File to write & \code{fstream} \\
+\code{stringstream} & String & \code{sstream} \\ \hline
+\end{tabular}
+\caption{The streams you will use most frequently.\label{tab:streams}}
+\end{table}
+
+The difference between \code{cout} and \code{cerr} is twofold:
+First, \code{cout} buffers its output instead of printing it immediately,
+whereas \code{cerr} prints immediately. 
+This makes \code{cerr} very useful to output debug information,
+whereas you will probably write your ``real'' output to \code{cout}.
+They are also two different logical streams. This means that if you
+redirect your output to a file (which we will do when grading you),
+the default is that only \code{cout} gets redirected.
+So if you print debug information to \code{cerr},
+it still appears on the screen, and doesn't ``pollute'' your output. 
+Finally, \code{cerr} often gets displayed in a different color.
+All this is to say: it may be good to get into the habit to print all
+your ``real'' output to \code{cout},
+and all of your debug output to \code{cerr}.
+
+To extract items from an input stream, you use the \code{>>} operator,
+and to insert items into an output stream, you use \code{<<}.
+
+A few things are worth remembering about reading from an input
+stream. (These frequently trip students up.)
+\begin{itemize}
+\item When reading from a stream (say, \code{cin}, or a \code{ifstream
+    myinput}), you can use \code{cin.fail()} (or \code{myinput.fail()})
+  to check whether the read succeeded.
+  When one read fails (and the \code{fail} flag is set), it will
+  remain set until you explicitly reset it with \code{cin.clear()} or
+  \code{myinput.clear()}. Until then, all further reads will fail,
+  since C++ assumes that until you have fixed the source of the problem,
+  all incoming data will be unreliable now.
+
+\item Remember that \code{>>} reads until the next white space, which
+  includes spaces, tabs, and newlines.
+
+  Be careful here when entering things manually. If at the first
+  prompt, you enter multiple items separated by space, they will
+  ``supply'' the next few extractions. That is, if you write code like
+\begin{verbatim}
+cout << "Please enter n:"
+cin >> n;
+cout << "Please enter m:"
+cin >> m;
+\end{verbatim}
+  and enter ``5 3'' at the first prompt, it will read 5 into \code{n}
+  and 3 into \code{m}.
+  In particular, this is likely to trip you up if you somehow try to
+  read an entire line of text from a file using \code{>>}, and that
+  line happens to contain white spaces.
+
+\item If you want to also read spaces, then instead of using
+  \code{>>}, you should use \code{getline}, such as
+  \code{cin.getline()} or \code{myinput.getline()}. 
+  It lets you specify a string to read into, 
+  a maximum number of characters to read, and 
+  character to stop at (default is newline), and will then read into
+  the string. That string can later be further processed.
+
+  Notice that you need to be a bit careful about \code{getline} at the
+  end of a file; you may need to check the correct flags to avoid reading the
+  last line multiple times.
+
+\item If you want to ``clear'' off the remaining characters in a
+  stream so they don't cause issues later, you can use the
+  \code{ignore (int n)} function, which will ignore the next \code{n}
+  characters (which you can specify --- default is 1).
+\end{itemize}
+
+\subsection*{File Streams and String Streams}
+File streams are the typical C++ way of reading data from files.
+The two types are \code{ifstream} (for files you read) and
+\code{ofstream} (for files you write).
+A file stream needs to be opened before you can read/write from it. 
+Once you have opened it, it can basically be used like \code{cin} and
+\code{cout}.
+
+Notice that in file streams, when you read \emph{over} the end of the
+file, you will get a \code{fail} condition.
+That happens after you \emph{reach} the end of the file,
+which is often cause for confusion when using \code{getline}.
+
+The other thing to keep in mind about file streams is that after
+you are done, you should call \code{close()} on them.
+
+\medskip
+
+Since strings are sequences of characters, just like files,
+it is natural to treat them as streams as well.
+This is what the \code{stringstream} type is for.
+It is particularly useful when you have read an entire string and want
+to break it into smaller pieces, e.g., separated by spaces.
+You can treat the string as a \code{stringstream}, and then use extraction
+operations on it to get the different items.
+This is also a convenient way to convert strings to integers.
+
+As a piece of advice, avoid using the same \code{stringstream} object
+multiple times --- or if you do, you must make sure to reset it.

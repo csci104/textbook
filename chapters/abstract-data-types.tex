@@ -1,0 +1,189 @@
+If we take a step back from what we have been doing with Linked Lists,
+we can think about the functionality they enable.
+Let us look at the version we just analyzed,
+which allows us to do three things:
+\begin{enumerate}
+\item Add an integer $n$ to the list.
+\item Remove an item from the list.
+\item Print all the integers in the list, in the order they were added.
+\end{enumerate}
+
+If all we care about is being able to perform these three operations,
+it does not matter so much whether we implement them using linked
+lists, or perhaps arrays, or vectors, or some other method. 
+What we really want is some data structure that stores data
+internally, and allows us to use these three operations. 
+In other words, we focus on \emph{what} we want to do,
+not \emph{how} exactly it is done.
+Linked lists were one answer to \emph{how}.
+
+Being precise about the \emph{what},
+i.e., the operations we want to see implemented, or are implementing,
+is what is specified as an \todef{Abstract Data Type (ADT)}. 
+An ADT is defined entirely by the operations it supports,
+such as the ones above.
+In this class, we will spend a lot of time focusing on the following three ADTs.
+
+\begin{description}
+\item[List:] A list data type is defined by supporting the following
+  key operations (where \code{T} denotes any type, such as \code{int},
+  \code{string}, or something else):
+\begin{enumerate}
+\item \code{insert (int position, T value)}:
+  inserts the value right before the given position,
+  moving all the later elements one position to the right.
+\item \code{remove (int position)}:
+  removes the value at the given position,
+  moving all the later elements one position to the left.
+\item \code{set (int position, T value)}:
+  overwrites the given position with the given value.
+\item \code{T get (int position)}:
+  returns the value at the given position.
+\end{enumerate}
+
+Thus, the \code{List} data type is a lot like an array in its functionality,
+but it allows inserting and removing elements while shifting all others.
+
+Notice that this definition is not quite complete.
+For instance, it does not tell us what values of \code{position} are legal,
+or what happens when they are out of range.
+For instance, if we are trying to insert something right before
+position 4 of a 2-element list, what should happen?
+Should an error be signaled?
+Should the list be filled up with dummy elements to make it possible?
+Similarly, we have not specified what the legal ranges are of the
+\code{position} variable for the other operations.
+What we intended was of course that \code{position} must be between 0
+and \code{size-1}
+(where \code{size} is the number of elements in the list)
+for all operations except \code{insert},
+where it needs to be between 0 and \code{size}.
+
+Of course, we could add other functions that should be supported,
+such as \code{size()} or \code{isEmpty()}.
+The textbook lists several others,
+but the four we have given are really the key functions that most
+define a \code{List}.
+
+You are probably already familiar with the C++ \code{vector} and
+\code{deque} data types, which are two natural implementations of the
+\code{List} data type (and provide a few other functions).
+In fact, we will see how the \code{vector} implementation works
+internally in Chapter~\ref{chap:arraylists}.
+But \code{vector} and \code{deque} are not the only possible implementations,
+and we discuss implementations based on linked lists as well.
+
+\item[Bag (set):] 
+A \code{set} (called \code{Bag} in the textbook) supports the
+following operations:
+\begin{enumerate}
+\item \code{add (T item)}: Adds the item into the set.
+\item \code{remove (T item)}: Removes the item from the set.
+\item \code{bool contains (T item)}: Returns whether the set contains
+  the given item.
+\end{enumerate}
+
+This is a rudimentary implementation of a mathematical set (see CSCI 170).
+Again, our specification is not complete.
+For instance, we do not say what should happen if an item is added multiple times:
+are multiple copies added, or only one, and is an error signaled?
+If multiple copies are added, then what does \code{remove} do?
+Does it remove just one of them or multiple?
+
+Typically, in a \code{set}, we only allow one copy.
+If we want to allow multiple copies of the same item,
+we call it a \todef{multiset}.
+This convention is pretty widely used, but not universally.
+
+\item[Dictionary (map):]
+A \code{map} (or \code{Dictionary}, as it is called in the textbook)
+is a data structure for creating and querying associations between
+\todef{keys} and \todef{values}.
+Both keys and values can be arbitrary data types \code{keyType} and
+\code{valueType} themselves.
+The supported operations are: 
+
+\begin{enumerate}
+\item \code{add (keyType key, valueType value)}:
+  Adds a mapping from \code{key} to \code{value}.
+\item \code{remove (keyType key)}:
+  Removes the mapping for \code{key}.
+\item \code{valueType get (keyType key)}:
+  Returns the value that \code{key} maps to.
+\end{enumerate}
+
+Again, this is a bit underspecified.
+What happens for \code{remove} or \code{get} if the given \code{key} is not in the map? 
+Should they signal an error?
+Also, if another mapping is added for the same \code{key}, what will
+happen? Can two mappings co-exist? Will an error be signaled? Does the
+new one overwrite the old one?
+If there are two mappings for the same key, then which one does
+\code{get} use to determine what to return?
+
+Typically, one would not allow multiple mappings for the same key.
+Again, this is widely, but not universally, accepted as standard.
+Some people call a \code{map} that allows multiple mapping per key a
+\code{multi-map}.
+
+If you want to think about it mathematically, 
+the \code{map} data type implements basically a (partial) function from
+keys to values.
+In a function (partial or not), you cannot have a key mapping to
+multiple values.
+\end{description}
+
+Let us look a bit at commonalities and differences between these
+abstract data types. 
+First, all of them support storing data and accessing them;
+after all, they are abstract data types.
+
+The big difference between \code{List} and the others is that a list
+really cares about the order. 
+A list in which the number 2 is in position 0 and the number 5 in
+position 1 is different from a list in which the two numbers are in
+opposite order.
+On the other hand, neither a \code{set} nor a \code{map} care about
+order. An element is either in a set or not, but there is not even any
+meaning to such a thing as an index in a set. 
+Similarly, elements map to others under a \code{map}, but there is no
+sense in which the elements are ordered or in a designated position.
+
+Let us illustrate this in terms of some applications for these data
+types. A \code{List} may be a good thing for a music playlist,
+the lines in a computer program, or the pages of a book.
+For all of them, the order of the items is important, as is the
+ability to access specific items by index (a page, or a place in a
+playlist).
+On the other hand, a \code{map} is a natural fit for any kind of
+directory (student records or e-mail address, phone book, dictionary
+of words, web page lookup by search query).
+Here, it does not matter in what order the items are stored,
+so long as it is easy, given the key,
+to find the corresponding record.
+
+While a \code{List} is thus fundamentally different from a \code{map},
+a \code{set} is actually quite similar to a \code{map}. The main
+difference is that for a \code{map}, we store additional information
+for each included item, whereas for the \code{set},
+we only remember the presence (or absence) of items. 
+In other words, \code{set} is a special case of \code{map}, where the
+value associated with each key is some kind of dummy that is never
+used. For that reason, we will not really look much at implementing
+\code{set} (except in Section~\ref{sec:bloom-filters}). 
+Instead, we will put a lot of emphasis on implementing \code{map},
+and we then typically get a \code{set} implementation for free.
+
+Of course, just because a \code{List} by itself is a very different
+object from a \code{map} does not mean we cannot use one to implement
+the other. In fact, a pretty natural (though not very efficient) way
+of implementing maps is to use lists as the place to store the data.
+It is important to notice, though, that this is now a ``how'' question:
+just because we can use one technology to solve a different problem
+does not mean that the two are the same.
+
+Learning which ADT most naturally fits the requirements of what you
+are trying to do is an important skill.
+That way, you separate out the implementation of your code that uses
+the ADT from the implementation of the ADT itself,
+and structure your code much better. 

@@ -1,0 +1,416 @@
+In the previous chapter, we learned about Abstract Data Types.
+The notion of an Abstract Data Type goes hand in hand with
+Object-Oriented Design.
+In Object-Oriented Design of programs, we group together data items
+with the operations that work on them into \todef{classes};
+classes are data types, and we can then generate instances of these
+classes called \todef{objects}.
+The objects have both the data inside them and the
+functions that operate on the data.
+When specifying a class, we must take good care to keep two things
+separate:
+\begin{enumerate}
+\item the \todef{specification} of the functions that other
+classes can call. This is like the specification of an abstract data
+type, and usually given in a header (\code{.h}) file.
+\item the \todef{implementation} of how the functions are actually doing
+their job, and how data items are stored internally.
+This is in a \code{.cpp} file, and hidden from other classes.
+Hiding it allows us to change the implementation without needing to
+change the implementation of other pieces of code that use the class.
+\end{enumerate}
+We will see much more about classes and object-oriented design in the
+next few chapters.
+
+A \todef{class} maps almost exactly to an Abstract Data Type;
+you can think of it as essentially a \code{struct} with functions in it.
+An \todef{object} is one data item whose type matches a class;
+think of a class as the abstract notion of a car and the operations it
+supports (accelerate, slow down, honk the horn, switch on/off the
+lights, $\ldots$),
+while an object is a particular car that implements these properties.
+So while there is only one ``car'' class,
+there can be many objects of type ``car''.
+
+Remember how we implemented Linked Lists in Chapter~\ref{chap:linked-lists}? 
+Inside our \code{main} function, we had a variable for the head of the
+list, and we provided functions for appending and removing items from
+the list, as well as for printing (or processing) items.
+In a sense, the data storage and the functions belong together. 
+The \code{append} or \code{remove} function is useless without the
+data to operate on, and the data do not help us without those
+functions to operate on them.
+Classes are exactly the way to group them together,
+and get rid of the somewhat awkward global variables for the head (and tail).
+
+Once you get more experienced with object-oriented design ideas,
+you will start thinking of your objects not just as pieces of code,
+but real entities which sometimes interact with each other in complex ways,
+notifying each other of things going on, helping each other out, and so on.
+One sign of a more experienced programmer in an
+object-oriented language (such as C++ or Java) is to be able to think
+of code not just as many lines in a row, but as almost an eco-system
+of different objects, each fulfilling its own little well-defined
+role, and interacting with each other in interesting and productive ways.%
+\footnote{For those a little more interested in programming language
+  history, it should be noted that in a sense, we are presenting you
+  with a mix of two different motivations for object-oriented design.
+  One school (leading the development of the language SmallTalk)
+  advocated object-oriented design as the ``natural'' way to implement
+  data structures, as we did at teh beginning of the chpater.
+  The other school (leading the development of the language Simula)
+  felt that designing code was more natural if the code was structured
+  to match entities in the real world. For instance, when designing a
+  computer system for banking, one would have classes for customers,
+  ATMs, checking accounts, etc. Both are very fruitful views and good
+  reasons to design object-oriented code.}
+
+\section{Header Files and Declarations}
+
+As a first cut, our class declaration for a linked list of integers
+may look as follows:
+
+\begin{verbatim}
+class IntLinkedList {
+  void append (int n);
+  void remove (Item *toRemove);
+  void print ();
+
+  Item *head;
+}
+\end{verbatim}
+
+Notice that the class includes both functions and data (\code{head}).
+Because the class contains the pointer \code{head} itself,
+we do not need to pass the head of the list to the function any more,
+as we did earlier.
+
+Of course, we still need to implement the functions.
+But before doing so, we notice that this is what the rest of the
+world really needs to know about our class: they need to know the
+functions to invoke and (maybe) about the variables we use.
+Thus, these parts should go into a \emph{header file}
+(with extension \code{.h}),
+while the actual implementation will go into an implementation
+(\code{.cpp}) file.
+
+The header file should make copious use of comments to describe what
+\emph{exactly} the functions do. For instance, what happens if the
+\code{toRemove} is not actually an element of the list?
+What format is used for printing the list?
+
+A moment ago, we said that the header file also contains the variables
+(such as \code{head}) inside the class. While this is true, to keep our
+code as modular as possible, other pieces of code should not really be
+allowed to directly access those variables\footnote{One downside of
+  this example is that our \code{remove} function actually works with
+  a pointer to an element. So in this sense, the implementation is not
+  really hidden. We will overlook this issue for now, for the sake
+  of continuing with this example, but if you were bothered a bit by
+  this: Way to go!}.
+For instance, if a week later, we decide to use a \code{vector}
+implementation to achieve the same functionality,
+we do not want any code out there to rely on the existence of a variable named \code{head}. 
+We want to hide as much about the class as possible.
+
+The way to do this is to declare the variables \code{private:}
+this means that only functions in the class are allowed to access
+those variables, but not any other code. 
+(We can also declare functions to be \code{private},
+something we mostly do for internal helper functions.)
+The opposite of \code{private} variables/functions are \code{public}
+ones: these can be used by all other parts of the
+program. (There is also a \code{protected} modifier, which we
+  will learn about later, when we learn about inheritance.)
+\code{private, public}, and \code{protected} are called \todef{access
+  modifiers}, since they modify who can access the corresponding
+elements of the class.
+Our new version of the class declaration looks as follows:
+
+\begin{verbatim}
+class IntLinkedList {
+  public:
+    void append (int n);
+    void remove (Item *toRemove);
+    void print ();
+  
+  private:
+    Item *head;
+}
+\end{verbatim}
+
+In this context, it is also important to know about \code{get} and
+\code{set} functions. Often, you will declare a class for which you
+really kind of do want to be able to overwrite the elements.
+For instance, think about \code{Item},
+which we previously declared as a \code{struct}.
+Instead, we could declare it as a \code{class}, as follows:
+
+\begin{verbatim}
+class Item {
+  public:
+    int value;
+    Item *prev, *next;
+}
+\end{verbatim}
+
+In order to emulate the functionality of a \code{struct} when using a
+\code{class}, it is necessary to make all elements \code{public}.
+But making all elements \code{public} is very bad style:
+it allows other code to see the internals of a class,
+which could mean that changing things in the future is harder.
+But if we make the fields \code{private}, how can we read and change
+the \code{value} field?
+The answer is to add two functions \code{getValue} and \code{setValue},
+which will read/write the \code{value} variable. 
+Often, these functions can be as easy as \code{return value;} or 
+\code{value = n;}.
+The reason to have them is that you may later change your mind about
+something. For instance, you may decide that \code{value} is a bad
+name for the variable, and you want to call it \code{storedNumber}
+instead. But if you do that, then all code that referenced \code{value}
+will break. If you have a \code{getValue} and \code{setValue} function,
+then you just have to change their implementation.
+
+More importantly, the \code{get} and \code{set} functions allow you to
+deal with illegal values, or perform other transformations.
+For instance, if you decide that only positive numbers are supposed to be
+stored, then you can create an error (or do something else) whenever
+the given value is negative. This kind of checking of values can be
+very useful in implementing something like a \code{Date} class for
+storing a day of the year,
+or others where you naturally want to restrict values that can be stored.
+
+\section{Implementation of Member Functions}
+
+Now that we have sorted out the header file, we can think about the
+implementation, which we would do in a file called
+\code{IntLinkedList.cpp}.
+At the top, we would include the header file:
+
+\begin{verbatim}
+//IntLinkedList.cpp
+
+#include "IntLinkedList.h"
+\end{verbatim}
+
+Then, we can start associating functions with our
+\code{IntLinkedList}. The syntax for implementing class functions
+is of the following form:
+
+\begin{verbatim}
+void IntLinkedList::append (int n) {
+  // implementation...
+}
+\end{verbatim}
+
+That is, the function name is really the class name, followed by two
+colons, and then the name of the function.
+This tells the compiler that this code belongs to the class. 
+If we did not include \texttt{IntLinkedList::} in the function
+signature, \texttt{append} would just be a simple global function. 
+The compiler has no way to know that we intend our function to be part
+of a class, unless we either put it inside 
+\code{class IntLinkedList \{ ... \}} (which is bad style),
+or put the class name in the signature, as we just did.
+
+For the actual implementation of the functions, we can just basically
+copy over the code from our previous linked list implementation --- 
+the only difference is that now, the functions are member functions of
+a class, rather than global functions, and the variable \code{head} is
+a (private) member variable of the class rather than having to be
+passed as a function parameter.
+So we will not repeat all the code here. Inside the class, you can treat
+all variables (even the private ones) like global variables:
+all member functions know about all of the class's members.
+
+However, before moving on, let us briefly revisit our nice recursive
+\code{traverse()} function, which we could use, for instance, to print
+the entire list, or print it in reverse order. Let us look at the
+reverse order print version, and call it \code{printreverse()}.
+
+\begin{verbatim}
+void printreverse (Item *head)
+{
+  printreverse (head->next);
+  cout << head->value;
+}
+\end{verbatim}
+
+In this function, the \code{head} pointer was not always pointing to
+the actual head of the list, but rather, we had it point to different
+members of the list during different function calls.
+On the other hand, the overall public signature for the function
+should probably be
+
+\begin{verbatim}
+...
+  public:
+    void printreverse ();
+...
+\end{verbatim}
+
+So how can we implement the recursive function? The answer is that we
+declare a private helper function. Something like
+
+\begin{verbatim}
+...
+  private:
+    void _printreversehelper (Item *p);
+...
+\end{verbatim}
+
+Then, the implementation of \code{printreverse} is just
+\begin{verbatim}
+void LinkedList::printreverse ()
+{ _printreversehelper (head); }
+\end{verbatim}
+
+\section{Constructors and Destructors}
+\label{sec:classes:constructors}
+
+We could now use our implementation to create an object of type
+\code{IntLinkedList} and append/remove elements from it:
+\begin{verbatim}
+// main.cpp
+int main (void)
+{
+  IntLinkedList *myList = new IntLinkedList;
+  for (int i = 1; i < 10; i ++) myList->append (i);
+  myList->print ();
+  return 0;
+}
+\end{verbatim}
+
+But one concern at this point is: where does the \code{head}
+variable get initialized? Earlier, we said that 
+we express an empty linked list by having \code{head=NULL}.
+How can we be assured that when we create a new object of type
+\code{IntLinkedList}, the pointer is actually \code{NULL}?
+Because we made the variables private, we cannot add the line
+\code{head=NULL;} before the loop.
+So perhaps, we should create a member function \code{initialize} in
+the class \code{IntLinkedList}.
+Then, we just have to remember to call it right after generating the object.
+
+Fortunately, C++ has a mechanism called \todef{constructor} to do just
+that, and do it automatically.
+We can define \todef{constructor functions} with a special name which
+get automatically called when we create a new object of that class.
+Constructor functions are the right place to put initialization code.
+The name of a constructor is always the name of the class,
+and a constructor does not return anything. 
+The constructor will be run as soon as an object is created.
+It looks as follows:
+
+\begin{verbatim}
+IntLinkedList::IntLinkedList() {
+  head = NULL;
+}
+\end{verbatim}
+Notice (again) that there is no return type, not even \code{void}.
+You can have multiple constructors;
+for instance, we may add a constructor that initializes the list to
+contain one element with a given number:
+
+\begin{verbatim}
+IntLinkedList::IntLinkedList (int n) {
+  head = NULL;
+  append (n);
+}
+\end{verbatim}
+
+If we define two constructors, when we create the object, we can write
+things like
+\begin{verbatim}
+IntLinkedList *p = new IntLinkedList (), *q = new IntLinkedList (3);
+\end{verbatim}
+The first case calls the first constructor
+(and creates an empty list),
+while the second calls the second constructor
+(and creates a list with one item, containing the number 3).
+This is often useful for copying all data from one object to another,
+or reading an entire object from a file or a string.
+(We will learn more about those so-called copy constructors soon.)
+So long as their signatures (number or types of arguments) are
+different, we can create as many constructors as we want.
+Of course, they should all be declared in the header file, and
+implemented in the \code{.cpp} file.
+
+Similar to the initialization, we may also want to destroy data
+objects we created when deleting an object.
+Per default, when we call \code{delete myList;} in the code above,
+it will free up the space used for storing the pointer \code{head},
+but it will not free up any of the memory for the elements of the linked list. 
+That is a good thing --- after all, other code may still need them.
+So if we do want them deleted, we need to create a function that does
+the ``opposite'' of the initialization.
+
+Such a function is called a \todef{destructor},
+and the destructor is automatically called when the object is deleted. 
+Just as for constructors, there is a naming convention for destructors:
+they always have the same name as the class, with a preceding tilde:
+\code{IntLinkedList::\textasciitilde{}IntLinkedList()}.
+And just like a constructor, a destructor has no return type, not even
+\code{void}.
+Our implementation of the destructor will look something like the
+following:
+
+\begin{verbatim}
+IntLinkedList::~IntLinkedList ()
+{ 
+  Item *p = head, q;
+  while (p != NULL)
+       {
+          q = p->next;
+          delete p;
+          p = q;
+       }  
+}
+\end{verbatim}
+
+\section{The \code{this} pointer}
+
+Sometimes, in implementing a member function, you will run into
+scoping issues, such as:
+a function has a local variable with the same name as a member variable.
+For instance, imagine that we write a \code{setValue} function for the
+class \code{Item}, and it looks as follows:
+\begin{verbatim}
+void setValue (int value)
+{ // code here
+}
+\end{verbatim}
+We now want to somehow set the \code{value} field of the class to the
+variable value, but writing \code{value=value} clearly is not going to
+work, since --- whichever variable \code{value} actually refers to (the
+answer is the function's parameter) --- both mentions of \code{value}
+will refer to the same variable.
+To make explicit that an assignment or other operation is talking
+about a member of the particular object to which the function belongs,
+C++ uses the keyword \code{this}. 
+
+\code{this} is always a pointer to the object to which the method
+belongs. So we can write \code{this->value} to refer to the data of the
+object itself, and write the preceding code as:
+\begin{verbatim}
+void setValue (int value)
+{ this->value = value; }
+\end{verbatim}
+
+There are other, more important, uses of the \code{this} pointer that
+you will learn about, partly in this class, and more importantly as
+you move on. One of the most important ones arises when you have one
+object A generating another object B, and B is supposed to know A's
+identity. For instance, A could be the main part of an application,
+and B a part of the user interface that is being created on the fly. 
+Now, A might want B to call some function in A when the user presses a
+certain button. But for that, B needs to be told the ``identity'' of
+A. The way one normally does this is that when B is created, it gets
+passed the \code{this} pointer of A, and thus knows about A.
+
+You can think of the \code{this} pointer as a way for an object to
+know who/what it is, or more precisely, to find out where in memory it
+is stored. Since most passing around of objects is done by passing
+around pointers, it is very useful for an object to find out and then
+pass around its own memory location.

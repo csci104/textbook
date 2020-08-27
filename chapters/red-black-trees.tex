@@ -1,0 +1,453 @@
+\section{More General B Trees}
+We've just seen 2-3 Trees as a special case of B Trees.
+In principle, we could implement B Trees with almost any combinations
+of lower and upper bounds on the number of keys per node. 
+In general, we can make B trees with at least $b$ children (and hence
+$b-1$ keys) per node and at most $b'$ children (and hence $b'-1$
+keys), whenever $b' \geq 2b-1$.
+
+Let's see why that is, and where the $b' \geq 2b-1$ restriction comes
+from. First, of course, we need to allow some special cases. 
+If we choose $b=5$, but our tree contains only 2 keys total, then we
+cannot have each node contain at least $4$ keys. So we allow one node
+to have fewer than the minimum number of keys.
+
+Searching in a general B tree is the obvious generalization of the 2-3
+Tree search. When looking for a \code{key} in a tree $T$ rooted at
+$u$, we compare it to all keys in $u$ with a linear search.
+If we found it, great. If not, we have at least identified two
+consecutive keys $k_i < k_{i+1}$ such that $k_i < \mbox{key}$ and
+$k_{i+1} > \mbox{key}$. Then, we know that we need to search in the
+subtree $T_{i+1}$ recursively.
+
+To insert, as before, we find where the \code{key} would belong, and
+insert it into that leaf node. If the number of keys is still at most
+$b'-1$, we are all done. But if the number of keys is now $b'$, which
+is too large, we need to split the node. We break it into two nodes
+with $\lfloor (b'-1)/2 \rfloor$ and $\lfloor b'/2 \rfloor$ keys each,
+while passing the middle key up to the parent. Then, we recurse or
+iterate on the parent, as for 2-3 Trees. Now, we can also see why we
+need that $b' \geq 2b-1$. After all, the two newly created nodes from
+splitting have to be legal, so we need that 
+$b-1 \leq \lfloor (b'-1)/2 \rfloor$, which is ensured by $b' \geq 2b-1$.
+
+To delete a key, we do the same initial steps as for 2-3 Trees, i.e.,
+swapping keys if necessary, then removing a key from a node. 
+The difficult case is again when a node has too few keys after
+deletion. In that case, we look to borrow keys from siblings, from
+parents, or merging a parent with a sibling and recursing.
+There are more cases now, but it works the same way.
+If you were to implement this for large $b$, instead of writing case
+distinctions by hand, you'd have a \code{for} loop to do the key
+swapping.
+
+Ok, so now we know how general B trees work. But why would anyone want
+to use them rather than the nice 2-3 Trees? They are more complicated
+to implement, and generally less efficient, because you perform linear
+search inside each node, which can get somewhat expensive for large
+$b$.
+
+The main reason to go to much larger $b,b'$ (in the hundreds or thousands)
+is that sometimes the map cannot be entirely stored in main memory,
+and is instead stored on disk. In particular in the old days when
+memory was very scarce (think 4k of main memory), this meant a lot of
+loading from disk, which is several orders of magnitute slower.
+In particular, locating a record on disk is slow --- once you have
+found it, reading a consecutive memory block is significantly faster.
+So the goal is to make the tree as shallow as possible, by giving it a
+larger branching factor. If you give each node an outdegree of 1000
+instead of 2, the depth of the tree will be $\log_{1000} (n)$ rather
+than $\log_2 (n)$, which is smaller by about a factor 10, so 10 times
+fewer disk accesses.
+
+The idea is that we'll bring in a node with 1000 keys. The linear
+search in memory is still much faster, so we know where to go next,
+and bring in another node with a lot of keys. That way, we can do
+better when the tree is too large for main memory.
+The textbook discusses data structures for external memory (hard disk)
+in more detail, but we won't go into it more in this class.
+
+One particular case of B trees we want to quickly look at is 2-3-4
+Trees. So nodes can have 1, 2, or 3 keys, and correspondingly 2, 3, or
+4 children. 
+2-3-4 Trees do have some slight advantages over 2-3 Trees, in that one
+can implement insertion a bit faster. 
+(Basically, the idea is that as you search down the tree, when you see
+a node with 3 keys already, it looks like you might need to split this
+node later. So you just split it prophylactically right away, and
+when you get to the leaves, you can insert a key without having to
+propagate any insertions back up to the root.)
+The slight downside of 2-3-4 Trees is with implementing them: there
+are now more cases to consider for borrowing from siblings or
+parents, and the code would become a little longer. 
+
+However, for us, the actual main reason to introduce 2-3-4 Trees here
+is to set the stage for Red-Black Trees.
+
+\section{Red-Black Trees}
+2-3 trees and 2-3-4 trees are perfectly fine data structures.
+But some people prefer their trees to be binary, and there are some
+classic binary search tree data structures that any computer science
+student should have learned about. The two most common ones are AVL
+Trees and Red-Black Trees. In this class, we see Red-Black Trees.
+
+As we discussed when we got started on search trees, the important
+thing is to keep the height bounded by $O(\log n)$, so that search
+(and insertion and deletion) is fast. In order to do that, you want
+the search trees to be ``balanced,'' in the sense that all the
+subtrees of a given node are ``similar'' in height or number of nodes.
+The goal of constructions such as Red-Black Trees or AVL Trees is to
+impose certain rules on the trees that can be maintained easily (in
+time $O(\log n)$ per insertion or deletion) and ensure that the height
+does not grow too fast. For AVL trees, these rules involve comparing
+the numbers of nodes in the two subtrees, and making sure they do not
+get too different. For Red-Black Trees, these are rules for coloring
+nodes, which will have a similar effect.
+
+There are two ways to understand Red-Black Trees: one is to present
+the coloring rules, which seem pretty arbitrary. The other is to
+realize that Red-Black Trees are exactly a way to ``squeeze'' 2-3-4
+Trees (or 2-3 Trees) into binary trees. We will start with the second
+way of thinking about them, as it is more intuitive. We will then see
+how the strange-looking rules for Red-Black Trees are simply the
+consequence of this encoding.
+
+In order to turn a 2-3-4 Tree into a binary tree, we need to figure
+out what to do when a node has 3 or 4 children, since that's not
+allowed in binary trees. The solution is quite simple: we replace the
+one node with a little subtree of 2 or 3 nodes.
+This is illustrated in Figure~\ref{fig:B-to-binary}.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(-5,-7)(5,5)
+\rput(-5,3){%
+\pstree{\Toval{4 7}}
+       {
+         \pstree{\Tp}{\Ttri{$T_1$}}
+         \pstree{\Tp}{\Ttri{$T_2$}}
+         \pstree{\Tp}{\Ttri{$T_3$}}
+       }
+}
+\rput(5,3){%
+\pstree{\Toval{A B C}}
+       {
+         \pstree{\Tp}{\Ttri{$T_1$}}
+         \pstree{\Tp}{\Ttri{$T_2$}}
+         \pstree{\Tp}{\Ttri{$T_3$}}
+         \pstree{\Tp}{\Ttri{$T_4$}}
+       }
+}
+
+\psline[doubleline=true]{->}(-5,0.5)(-5,-0.5)
+\psline[doubleline=true]{->}(5,0.5)(5,-0.5)
+
+\rput(-5,-4){%
+\pstree{\Tcircle[fillstyle=solid,fillcolor=lightgray]{4}}
+       {
+         \pstree{\Tp}{\Ttri{$T_1$}}
+         \pstree{\Tcircle[fillstyle=solid,fillcolor=red]{7}}
+                {
+                  \pstree{\Tp}{\Ttri{$T_2$}}
+                  \pstree{\Tp}{\Ttri{$T_3$}}
+                }
+       }
+}
+
+\rput(5,-4){%
+\pstree{\Tcircle[fillstyle=solid,fillcolor=lightgray]{B}}
+       {
+         \pstree{\Tcircle[fillstyle=solid,fillcolor=red]{A}}
+                {
+                  \pstree{\Tp}{\Ttri{$T_1$}}
+                  \pstree{\Tp}{\Ttri{$T_2$}}
+                }
+         \pstree{\Tcircle[fillstyle=solid,fillcolor=red]{C}}
+                {
+                  \pstree{\Tp}{\Ttri{$T_3$}}
+                  \pstree{\Tp}{\Ttri{$T_4$}}
+                }
+       }
+}
+\end{pspicture}
+\caption{Turning 2-3-4 Trees into binary trees. The figure shows nodes
+  with 3 and 4 children, and the corresponding little binary trees we
+  build.\label{fig:B-to-binary}}
+\end{center}
+\end{figure}
+
+We can see that as a result of this operation, each level is split
+into at most two new levels, so the height of the tree at most
+doubles. In particular, it stays at $O(\log n)$.
+Also, notice that as a result, not all leaf nodes will now be at the
+same level, but they will be roughly at the same level (within a
+factor 2 of each other).
+
+In the figure, we have also already added color coding corresponding
+to the way Red-Black Trees can be defined. When we split a node into 2
+or 3 nodes as we did, we will color the top level \emph{black} (in the
+figure, gray), and the lower level (1 or 2 nodes) \emph{red}.
+
+One way of defining Red-Black Trees is exactly as the trees you can
+get out of 2-3-4 Trees by performing the operations we just described.
+This is the motivation that your textbook also gives.
+The other definition captures the actual properties of trees you can
+get in this way.
+
+\begin{definition}
+A \todef{Red-Black Tree} is a binary search tree with the following
+additional properties:
+\begin{itemize}
+\item Each node is either red or black
+\item All \code{NULL} pointers (empty subtrees) are black; these dummy
+  trees are sometimes called sentinels.
+\item A red node can only have black children.
+      (However, a black node can have any colors among its children.)
+\item For any path from the root to a leaf, the number of black nodes
+  on the path must be the same.
+\item The root is black.
+\end{itemize}
+\end{definition}
+An implication of these properties is that every Red-Black Tree has
+height at most $2 \log_2(n)$.
+
+Of course, one way to get a Red-Black Tree is to start with a 2-3-4
+Tree and convert it over the way we just showed. But in practice, you
+don't want to just build one data structure in order to convert it to
+another; you want your data structure to work by itself.
+So we'll look at how to implement the operations (search, insert ---
+we'll skip deletion in this class) directly on Red-Black Trees.
+
+To search for a key, you can just ignore the colors. 
+They matter only when inserting or removing items, as that is when the
+tree is changing, and thus needs to be kept balanced.
+
+\subsection{Inserting into a Red-Black Tree}
+To insert a key, as always, you search for it (unsuccessfully) in the
+tree. Then, it is inserted as a the only content of a red leaf.
+If the parent of that leaf was black, all is good; we still have a
+valid Red-Black Tree. (Notice that in 2-3-4 Trees, this corresponds to
+inserting into a node that still had space for another key.)
+
+However, the parent may actually be red, in which case we may violate
+the rule that a red node can only have black children.
+We can't just recolor the node or its parent black, because that would
+increase the number of black nodes on one, but not every, root-leaf
+path; just like for 2-3 Trees, it was important to keep all leaves at
+the same level, for Red-Black Trees, it is important to not violate
+the ``number of black nodes on root-leaf paths'' property, because it
+would be very hard to restore.
+
+So we want to solve the situation where the node $z$ we are currently
+looking at is red and its parent $y$ is red. We will assume that $y$
+itself is the left child of its parent $g$ (the grandparent of $z$).
+Otherwise, swap ``left'' and ``right'' in everything that follows.
+Notice that $g$ must be black, because we didn't have any color violations
+in the tree prior to inserting the red leaf.
+We distinguish two cases, based on the color of $z$'s uncle $u$ (i.e.,
+the other child of $g$ besides $y$.
+
+\begin{itemize}
+\item If $u$ is also red, then we have the situation in
+  Figure~\ref{fig:red-black-insert-recolor}.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(-3,-3.5)(3,3)
+\rput(0,0){%
+\pstree{\Tcircle[fillstyle=solid,fillcolor=lightgray]{$g$}}
+       {
+         \pstree{\Tcircle[fillstyle=solid,fillcolor=red]{$y$}}
+                {
+                \pstree{\Tcircle[fillstyle=solid,fillcolor=red]{$z$}}
+                        {
+                        \pstree{\Tp}{\Ttri{$T_1$}}
+                        \pstree{\Tp}{\Ttri{$T_2$}}
+                        }
+                  \pstree{\Tp}{\Ttri{$T_3$}}
+                }
+         \pstree{\Tcircle[fillstyle=solid,fillcolor=red]{$u$}}
+                {
+                  \pstree{\Tp}{\Ttri{$T_4$}}
+                  \pstree{\Tp}{\Ttri{$T_4$}}
+                }
+       }
+}
+
+\end{pspicture}
+\caption{Case 1 of insertion: $z$'s uncle $u$ is red.\label{fig:red-black-insert-recolor}}
+\end{center}
+\end{figure}
+
+In this case, we can recolor $y$ and $u$ black, and $g$ red instead.
+The number of black nodes on any root-leaf path stays the same, and
+we've fixed the violation.
+Of course, if $g$'s parent is also red, then we've created a new
+violation, but we can solve that iteratively, as it is two levels
+higher. If $g$ was the root, we are now safe; or rather, we can
+recolor it black to restore that rule.
+
+\item If $u$ is black, then the recoloring doesn't work: making $g$
+  red would decrease the number of black nodes on the paths going
+  through $u$. So we actually need to do some work. (So far, we've
+  just recolored, but not changed the tree.)
+  Let's look at the easier case first: when $z$ is the left child of
+  $y$. Then, we are in the situation shown in
+  Figure~\ref{fig:red-black-insert-rotate-right}, and we can fix it
+  with the \todef{rotation} shown in the figure.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.5cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(-7,-5)(7,5)
+\rput(-8,0){%
+\pstree{\Tcircle[fillstyle=solid,fillcolor=lightgray]{$g$}}
+       {
+         \pstree{\Tcircle[fillstyle=solid,fillcolor=red]{$y$}}
+                {
+                \pstree{\Tcircle[fillstyle=solid,fillcolor=red]{$z$}}
+                        {
+                        \pstree{\Tp}{\Ttri{$T_1$}}
+                        \pstree{\Tp}{\Ttri{$T_2$}}
+                        }
+                  \pstree{\Tp}{\Ttri{$T_3$}}
+                }
+         \pstree{\Tcircle[fillstyle=solid,fillcolor=lightgray]{$u$}}
+                {
+                  \pstree{\Tp}{\Ttri{$T_4$}}
+                  \pstree{\Tp}{\Ttri{$T_5$}}
+                }
+       }
+}
+
+\psline[doubleline=true]{->}(-1,3)(1,3) 
+\rput(0,4){Right Rotation}
+
+\rput(9,0){%
+\pstree{\Tcircle[fillstyle=solid,fillcolor=lightgray]{$y$}}
+       {
+         \pstree{\Tcircle[fillstyle=solid,fillcolor=red]{$z$}}
+                {
+                  \pstree{\Tp}{\Ttri{$T_1$}}
+                  \pstree{\Tp}{\Ttri{$T_2$}}
+                }
+         \pstree{\Tcircle[fillstyle=solid,fillcolor=red]{$g$}}
+                {
+                  \pstree{\Tp}{\Ttri{$T_3$}}
+                  \pstree{\Tcircle[fillstyle=solid,fillcolor=lightgray]{$u$}}
+                        {
+                        \pstree{\Tp}{\Ttri{$T_4$}}
+                        \pstree{\Tp}{\Ttri{$T_5$}}
+                        }
+                }
+       }
+}
+
+\end{pspicture}
+\caption{Case 2 of insertion: $z$'s uncle $u$ is black. We perform a right-rotation.\label{fig:red-black-insert-rotate-right}}
+\end{center}
+\end{figure}
+
+Notice that as part of the rotation, $y$ became the parent of $g$, and
+$g$ inherited (as its new left subtree) the tree $T_3$ that was the
+right subtree of $y$ before. We also recolored $y$ and $g$. You can
+check that the number of black nodes on all root-leaf paths has stayed
+the same, and we fixed all the double-red violations. 
+So there's no need to iterate in this case; the insertion algorithm
+terminates here. 
+
+So far, we assumed that $z$ was the left child of $y$. What happens
+when $z$ is the right child of $y$? That is the situation depicted in 
+Figure~\ref{fig:red-black-insert-rotate-left}. As you can see there,
+we deal with this with a left-rotation of $z$ and $y$, i.e., one level
+lower than the right rotation.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.5cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(-7,-5)(7,5)
+\rput(-8,0){%
+\pstree{\Tcircle[fillstyle=solid,fillcolor=lightgray]{$g$}}
+       {
+         \pstree{\Tcircle[fillstyle=solid,fillcolor=red]{$y$}}
+                {
+                \pstree{\Tp}{\Ttri{$T_1$}}
+                \pstree{\Tcircle[fillstyle=solid,fillcolor=red]{$z$}}
+                        {
+                        \pstree{\Tp}{\Ttri{$T_2$}}
+                        \pstree{\Tp}{\Ttri{$T_3$}}
+                        }
+                }
+         \pstree{\Tcircle[fillstyle=solid,fillcolor=lightgray]{$u$}}
+                {
+                  \pstree{\Tp}{\Ttri{$T_4$}}
+                  \pstree{\Tp}{\Ttri{$T_5$}}
+                }
+       }
+}
+
+\psline[doubleline=true]{->}(-1,3)(1,3) 
+\rput(0,4){Left Rotation}
+
+\rput(9,0){%
+\pstree{\Tcircle[fillstyle=solid,fillcolor=lightgray]{$g$}}
+       {
+         \pstree{\Tcircle[fillstyle=solid,fillcolor=red]{$z$}}
+                {
+                \pstree{\Tcircle[fillstyle=solid,fillcolor=red]{$y$}}
+                        {
+                        \pstree{\Tp}{\Ttri{$T_1$}}
+                        \pstree{\Tp}{\Ttri{$T_2$}}
+                        }
+                \pstree{\Tp}{\Ttri{$T_3$}}
+                }
+         \pstree{\Tcircle[fillstyle=solid,fillcolor=lightgray]{$u$}}
+                {
+                  \pstree{\Tp}{\Ttri{$T_4$}}
+                  \pstree{\Tp}{\Ttri{$T_5$}}
+                }
+       }
+}
+\end{pspicture}
+\caption{Case 2(b) of insertion: $z$ is $y$'s right child. We perform a left-rotation.\label{fig:red-black-insert-rotate-left}}
+\end{center}
+\end{figure}
+
+This does not really fix anything --- we still have the same two red
+nodes, one of which is a child of the other. We only changed which one
+is the child and which one is the parent. But notice that now, we can
+think of $y$ (instead of $z$) as the problem node, and $y$ is now the
+left child of its parent. So at this point, we can apply the
+right-rotation from the previous case, and we're done.
+\end{itemize}
+
+What happens in Red-Black Trees during insertion is perhaps not quite
+as intuitive as what goes on in 2-3 Trees when you insert. 
+As we saw in the context of AVL trees (Chapter~\ref{chap:AVL-trees}), 
+rotations are the natural way in which one fixes Binary Search Trees.
+But if you have trouble remembering them, you can always rederive them
+from 2-3-4 Trees, by asking yourself ``What would a 2-3-4 Tree do?''
+That is, you reinterpret your Red-Black Tree as a 2-3-4 Tree, look at
+the correct operation, and then ``translate'' that operation into the
+Red-Black tree. 
+That's of course not how you would implement it --- converting a
+Red-Black Tree into a 2-3-4 Tree requires linear time, which
+completely ruins your running time. But it's a useful way to help you
+understand or remember how the operations work.
+
+Notice that the first case (Red Uncle) corresponds to the case when
+you inserted a key into a full node and need to split it --- that's
+what recoloring does. The second case captures when the node was not
+full, but you might need to rearrange your trees a bit locally to turn
+them back into a correct ``translation'' of a 2-3-4 Tree.
+
+We didn't cover key removal in class, and won't include it in these
+notes. It contains a bunch more cases, and long case distinctions
+aren't particularly intuitive.
+As always, to remove a key, you first search for it,
+and swap the element with the successor in a leaf if necessary.
+Afterwards, there are a number of cases of rotations and recoloring,
+and if you really want, you can look them up in various textbooks, or
+derive them by asking yourself ``What would a 2-3-4 Tree do?''

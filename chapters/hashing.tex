@@ -1,0 +1,935 @@
+\newcommand{\BasicSetup}{%
+\multirput*{0}(-1,0)(1,0){13}{\psframe(0,0)(1,1)}
+\rput(-0.75,1.25){\small 0}
+\rput(0.25,1.25){\small 1}
+\rput(1.25,1.25){\small 2}
+\rput(2.25,1.25){\small 3}
+\rput(3.25,1.25){\small 4}
+\rput(4.25,1.25){\small 5}
+\rput(5.25,1.25){\small 6}
+\rput(6.25,1.25){\small 7}
+\rput(7.25,1.25){\small 8}
+\rput(8.25,1.25){\small 9}
+\rput(9.25,1.25){\small 10}
+\rput(10.25,1.25){\small 11}
+\rput(11.25,1.25){\small 12}
+
+\rput(2.5,2.5){$h(42)=3$}
+\rput(3.5,3){$h(17)=4$}
+\rput(7.5,2.5){$h(8)=8$}
+\rput(8.5,3){$h(48)=9$}
+\rput(11.5,2.5){$h(25)=12$}
+\rput(11.5,3){$h(38)=12$}
+\rput(11.5,3.5){$h(64)=12$}
+
+\psline{->}(2.5,2)(2.5,1)
+\psline{->}(3.5,2.5)(3.5,1)
+\psline{->}(7.5,2)(7.5,1)
+\psline{->}(8.5,2.5)(8.5,1)
+\psline{->}(11.5,2)(11.5,1)
+}
+
+\section{Introduction and Motivation}
+We have started looking at efficient implementations of the \code{map}
+ADT. Balanced Search Trees (such as 2-3 trees or Red-Black
+trees) work quite well. But the choice most often used in practice is
+Hash Tables. Their analysis isn't as ``beautiful'' or ``clean'', but
+on the other hand, they tend to work better in practice.
+And understanding them fully raises a lot of interesting questions
+about the nature of computing.
+
+To motivate the definition of Hash Tables, let's think about how we
+would implement a map if we \emph{knew for certain} that all
+keys would be integers between 0 and 999999.
+In that case, there wouldn't be any need for all the work with
+balanced trees just to get $O(\log n)$ time. 
+Instead, we could just define an array \code{ValueType a[1000000]}.
+All elements are initialized to some specific value $\perp$ to mean
+``unused.''
+Whenever we are to add a pair \code(key, value), we simply set
+\code{a[key] = value}, which works because we assumed that 
+\code{key} is always an integer between 0 and 999999.
+Looking things up is just as easy, as is removing elements.
+All of these operations take $O(1)$, so it's pretty much the perfect
+implementation of maps, when it works.
+
+Of course, the problem with this is that it only works when the set of
+possible keys is small --- here, there were just 1000000 possible keys.
+If the keys are 10 digit numbers (think USC IDs), then this
+would take an array of size $10^{10}$, which would push what can be
+done with a normal computer. And if we move to a few more digits, or
+have the key be a string of length up to 80, the array we would need
+would be way too large.
+
+If we follow the train of thought of the USC student IDs for a while,
+we notice the following: true, there are $10^{10}$ different IDs, but
+of those, only about 50000 or so are in use at any given time, between
+all the current students, faculty, and staff. 
+So if we declared an array of size $10^{10}$ (even assuming we had the
+space), we would actually have almost all of it empty, using only very
+few positions. Instead, it feels like 50000 items should fit
+nicely into an array of size 100000.
+The only problem? We don't know which element should go into which
+array position. After all, that's exactly what our ADT map is
+supposed to do in the first place.
+
+But what this suggests is the following approach. We define an array
+\code{a} that's reasonably large, say, 300000 in our USC ID example.
+Then, we have a function $h: \text{key} \mapsto \SET{0, 1, \ldots, 299999}$
+that maps keys to integers in the array's range. 
+When we add/remove/query a key $k$, we look in the position $h(k)$ in
+the array, i.e., we read/write the position \code{a[h(k)]}.
+This is exactly the idea of a Hash Table.
+
+\section{Hash Tables Defined}
+To speak about any kind of map, we need to have a space of
+keys and values. Let's denote the space of all possible keys by $K$
+(think all 10-digit IDs in our USC ID example, or the set of all
+strings of at most 80 characters), and the space of all values by $V$
+(think all USC student/employee records).
+The possible number of distinct keys is an important quantity --- we
+will denote it by $n = |K|$.
+
+At its most basic (we will see some more elaborate variations later),
+a Hash Table is an array $a$ of a chosen size $m$, with each entry
+$a[i]$ containing a pair $(k, v)$ of a key $k \in K$ and value $v \in V$.
+The most important thing about hashing is how to map a given key to a
+location in the hash table. 
+This is done by the \todef{hash function} $h: K \to \SET{0, \ldots, m-1}$. 
+Theoretically, any such function $h$ can be used as a hash functions;
+however, we will see very soon that some hash functions are better
+than others. 
+Figure~\ref{fig:hashtable} illustrates the very basics of hashing
+pictorially, for the hash function $h(k) = k \text{ mod } 13$ and a
+hash table of size $m=13$.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=1cm,arrowsize=0.1 3}
+\pspicture(-1,0)(14,4)
+
+\BasicSetup
+
+\rput(2.5,0.5){42}
+\rput(3.5,0.5){17}
+\rput(7.5,0.5){8}
+\rput(8.5,0.5){48}
+\rput(11.5,0.5){25}
+\endpspicture
+\end{center}
+\caption{Basic hashing illustrated with the hash function $h(k) = k
+  \text{ mod } 13$, for a hash table of size $m=13$. 
+  For readability, the figure omits the values stored along with the
+  keys, even though they would of course be in the hash table. 
+  More illustrative figures can be found in the textbook.
+\label{fig:hashtable}}
+\end{figure}
+
+In our most basic version of a Hash Table, we would implement the
+three map operations as follows:
+\begin{description}
+\item[\code{add(k,v)}]: Write the pair $(k,v)$ into the array location
+  $h(k)$, i.e., set \code{a[h(k)] = (k,v)}.
+\item[\code{remove(k)}]: Overwrite the position $h(k)$ with some
+  element indicating that the position is unused, i.e., set
+  \code{a[h(k)] = $\perp$}.
+\item[\code{get(k)}]: Return the value stored in position $h(k)$ (and
+  thus associated with $k$), i.e., \code{return a[h(k)].v}.
+\end{description}
+
+Of course, we can see an immediate problem with this basic
+implementation: if two keys $k,k'$ map to the same array position
+$h(k)=h(k')$, then whenever $k'$ is added after $k$, it will overwrite
+the entry for $k$, and our basic implementation loses everything it
+had stored about $k$. 
+When $h(k)=h(k')$, that's called a \todef{collision} in the hash
+function. In our basic implementation, a collision would be completely
+devastating.
+In Figure~\ref{fig:hashtable}, notice that we have a collision of
+three keys (25, 38, and 64) in position $i=12$.
+
+Collisions are really the central aspect of hash tables, in that all
+of our work will go into (1) how to avoid them as much as possible,
+and (2) dealing with them when they do appear.
+We will talk more about those in Sections~\ref{sec:functions} and
+\ref{sec:resolution}.
+
+One other important concept about hash tables is what's called the
+\todef{load factor}. Our hash table has size $m$, which means that
+there is room for up to $m$ items in it. 
+But we also care about how many elements we are \emph{actually}
+storing in the array right now --- we denote this number by $s$.
+The ratio $\alpha = \frac{s}{m}$ is called the \todef{load factor} of
+the hash table. 
+When it is small, there is a lot of room in the table. If it ever
+exceeds 1, we are guaranteed that a collision must have occurred.
+Going back to Figure~\ref{fig:hashtable}, assuming we found a way
+around overwriting elements in the case of collisions and placed the
+elements elsewhere, the load factor would be $7/13$.
+
+\section{Avoiding Collisions, and Choices of Hash Functions}
+\label{sec:functions}
+Our first hope in dealing with collisions would be to avoid them
+altogether. Then, we could use our nice and simple implementation.
+Alas, there is no hope for that. 
+If $n > m$, i.e., there are more keys than positions in the hash
+table, then by the Pigeonhole Principle\footnote{Students taking CS170
+  should have learned about this by now. If not, check out the textbook on
+  Discrete Mathematics, or Google the term.}, there must be at least two
+keys $k,k'$ with $h(k) = h(k')$, so we are guaranteed that there is a
+possible collision. Any data set that contains $k$ and $k'$ will then
+have a collision.
+Thus, avoiding a collision is possible only when $n \leq m$, and that
+case is much less interesting in practice.
+The textbook and other sources call a completely collision-free hash
+function a \todef[hash function]{perfect} hash function; while it would be nice to
+have one, and the idea of a perfect hash function is appealing and
+illuminating, a perfect hash function is unattainable for all
+practical purposes.
+
+Now we know that collisions cannot be avoided in the \emph{worst case}
+if $n > m$. But how soon do we expect collisions to actually occur?
+If we do worst-case analysis, i.e., analyze things as though the world
+is out to get us, then of course we need to assume that the world
+``deliberately'' picked out $k,k'$ to create a collision as the first
+two keys we see.
+But for reasons that we will see in a moment, for hash tables, we
+often like to perform the analysis under an assumption of \emph{random} keys.
+So how many random keys do we need to draw until we expect to see our
+first collision?
+There are $m$ possible indices of $h(k)$ we can draw, and if any two
+draws have the same index, then we have a collision. This is exactly
+an instance of the Birthday Paradox\footnote{This is another standard
+  concept from CS170. The basic version says that if you have 365 days
+  in the year, then around the time when you have 23 people in the
+  room, there is a reasonable probability (more than \half) that some
+  pair of them have the same birthday. More generally, when you have
+  $n$ items, and you select repeatedly uniformly randomly from them
+  (such as choosing a birthday among $n$ days of the year), around
+  $\Theta(\sqrt{n})$ is when you expect to see the first selected pair
+  with the same selected item. Again, more information can be found in
+  textbooks on Discrete Math or on probability, or by Googling.}, 
+so we would expect our first
+collision to occur around key number $\Theta(\sqrt{m})$.
+In other words, even if we think that the keys are drawn randomly
+(which should be pretty friendly to the hash table), the first
+collisions should occur around load factor $\alpha = \Theta(1/\sqrt{m})$.
+This is all the more reason why we will need to deal with collisions
+below.
+
+\subsection{Theory behind Choices of Hash Functions}
+So what makes a good hash function? 
+Well, first of all, $h$ itself should be easy enough to compute fast.
+Also, it should spread out keys as much as possible, in order to avoid
+collisions. 
+So clearly, the following, while fast to compute,
+is the absolute worst hash function: $\forall k: h(k) = 0$.
+
+\subsubsection{Modulo Arithmetic}
+Assuming that the keys are integers, a function that \emph{does}
+nicely spread out keys would be the function $h(k) = k \text{ mod } m$, 
+which wraps keys around the array. 
+
+Is this a good hash function? For starters, it's easy to compute.
+As far as using it in practice, it's not too bad, but there are some
+potential problems with it. Let's return to our USC ID example to see
+what problems may occur. Suppose that for each USC student and employee, the
+last 4 digits always captured the year that the person joined USC.
+And suppose also that our hash table has size $m=10000$. 
+Then, taking $k \text{ mod } m$ will exactly shave off the last 4
+digits. But now, all the values of $h(k)$ will be between 1920--2013.
+So only 94 entries in our large array will be used, leading to lots of
+(unnecessary) collisions. 
+
+It is quite common for keys to have similar patterns, where particular
+bits of a string encode particular information, and that information
+will be the same for many of the items. Then, we get very clustered
+key items in particular digits, and if the hash function does not
+break up these clusters, they will end up leading to lots of
+collisions in the hash table. This is definitely true for the function
+$h(k) = k \text{ mod } m$ when $m$ is a power of 2 or 10.
+The best choice of $m$ is a number that will not have such patterns,
+and for that, prime numbers are the best choice.
+
+The reason is that a prime
+number is, by definition, relatively prime to any other number. 
+In particular, suppose that your keys had a pattern where many keys
+have the same trailing sequence of digits (base 2, 10, or
+other). That means that there are many keys $k \in K$ with the same
+value of $(k \text{ mod } 2^d)$ or $(k \text{ mod } 10^d)$.
+Let $S$ be the set of all those keys, having the same value.
+(For concreteness, let's say we are doing this in binary, so all
+future references will be to $2^d$ instead of $10^d$.)
+If we take two such keys $k, k' \in S$, their difference $k-k'$ will
+be a multiple of $2^d$. 
+This means that the difference will only be divisible by $m$ if it is
+a multiple of $m \cdot 2^d$. (This is where we use primality of $m$.)
+But if the difference is not divisible by $m$, then 
+$(k \text{ mod } m) \neq (k' \text{ mod } m)$, so $k$ and $k'$ cannot be
+mapped to the same location unless $k - k'$ is a multiple of 
+$m \cdot 2^d$. This in turn means that each key $k \in S$ can collide 
+only with a $1/m$ fraction of the other keys in $S$, meaning that the
+hash function spreads around the keys in $S$ as much as possible.
+
+So the advantage of using a prime number for the array size $m$ is
+that it spreads a certain set $S$ (or multiple sets) of keys around
+the array. But why should we focus only on those specific sets $S$?
+In other words, why is it more important to spread out keys that share
+some postfix in whatever natural representation (base 2 or base 10)?
+In practice, those patterns are probably more likely to occur than
+other, more abstruse, patterns. But if we want to explore the
+underlying math a little more, we should dig deeper.
+
+\subsubsection{Mapping Randomly}
+What would be the best way to break up \emph{all} patterns?
+One way to make sure to break up all patterns would be to map 
+each key $k$ to an independently and uniformly random index 
+$i \in \SET{0, \ldots, m-1}$.  
+This would be great in that it would certainly break up all patterns.
+It would nicely spread out keys. The only problem? It would make it
+completely impossible to find an item again, since we put it in a
+random location. Apart from this (unfortunately fatal) problem, a
+random mapping would be a fantastic hash function.
+
+So mapping items to random locations obviously does not make sense.
+But the intuition does help out with our analysis. 
+In a sense, random mapping sets the ``gold standard'' that we should
+strive for, minus the randomness. 
+When analyzing how well hashing will do in practice, we rarely look at
+all the specifics of the hash function anyway.
+Therefore, when we have a good hash function, we will normally pretend
+that it creates something close enough to an actual random mapping
+that we can pretend it is actually random (for the purpose of analysis).
+Then, we can pretend that keys are actually drawn randomly from $K$,
+which will drastically simplify our analysis.
+Remember how earlier, in talking about the Birthday Paradox, we said
+that we can analyze hashing as though the keys are random? 
+Retroactively, this is the justification.
+
+Actually, there is one way in which we can map items randomly, and
+it's a standard technique, at least in terms of theory.
+We have a whole bunch of hash functions. When we initialize our hash
+table, we choose one at random from the set. Because it's a fixed
+function, we know how to compute it and find stuff. But because it was
+chosen randomly, it shares many of the nice properties of random
+mapping. This technique is called \todef{universal hashing}.
+
+What we haven't said yet is why \emph{any} non-random function $h$
+should be allowed to be analyzed as though it were random. If we are
+not flipping coins or rolling dice or measuring radioactive decay
+(which is a great source of randomness in practice), what makes
+something non-random ``random-like?''
+There is a huge and active research area within CS complexity theory
+on \todef{pseudo-randomness}, and it connects quite closely with
+hashing. Let's explore this a little more.
+
+\subsubsection{The Complexity Theory Lens}
+\label{sec:complexity}
+Which keys exactly should we spread out, and why?
+Going back to the Pigeonhole Principle, the stronger version
+of it says that if you map $n$ pigeons to $m$ pigeonholes, then there
+must be at least one pigeonhole with at least $\Ceiling{n/m}$ pigeons.
+So if $n$ is much larger than $m$ (think $n = 10^{20}$ and $m=10^8$),
+then there is some array entry $i$ such that at least $10^{12}$ keys
+$k$ all have $h(k) = i$. Let's call this set of keys $S$.
+Those keys in $S$ sure aren't spread out, since they were designed
+specifically with the goal of being terrible for our chosen hash
+function $h$.
+If nature were really nasty to us, it would only give us keys from
+$S$, and never mind how we deal with collisions, the hash table would
+get really inefficient.
+
+%Could nature really be this nasty? Could our data sets really look
+%like this? Well, this is in part a philosophical question, and as such
+%not really amenable to a computer science answer.
+%But there is also a very beautiful computational way of thinking about
+%this. In some sense, we can think of nature (which includes humans
+%entering stuff into computers) as one giant computer. All those atoms
+%and electrons forming and dissolving bonds and creating plants and
+%animals and minerals can be viewed as a big computational system
+%following some rules, and they aren't even all that complex.
+%As humans, our problem is that we are even less complex, so we can't
+%really simulate this massive computer. But in the end, it has fewer
+%than $10^{100}$ computing pieces in the whole universe, and has been
+%running only for about $10^{10}$ years, which isn't all that long.
+%So whatever nasty input it came up with cannot be all that hard to
+%compute.
+
+So here is the key insight: while the Pigeonhole Principle guarantees
+the \emph{existence} of a set $S$ of keys that all collide in the same
+place, the proof of the Pigeonhole Principle is inherently
+non-constructive, so it doesn't tell us how to \emph{find} such a set,
+short of exhaustively searching through all $n$ keys.
+If finding the set $S$ were actually very difficult, then we could
+put some faith in the fact that nature would not have been able to
+perform all the computations necessary to feed us a nasty input.
+Or at the very least, humans won't accidentally perform those
+computations in their choice of what data items to enter into our
+map (such as their choice of USC ID numbers).
+
+Let's formalize this a little more. 
+For any array index $i$, let $h^{-1}(i) = \Set{k \in K}{h(k) = i}$
+denote the set of all keys $k$ with $h(k) = i$, i.e., all keys mapped
+to array position $i$.
+We say that $h$ is a \todef{one-way hash function} if given $i$, it is
+hard to compute $h^{-1}(i)$. Or, stated differently, given a target
+location $i$, it is hard to find at least one hash key $k$ that is
+mapped to $i$.
+(Of course, remember that given the key $k$, computing $h(k)$ should
+always be easy --- the important thing is that inverting the
+computation is supposed to be difficult.)
+If it is hard to compute on purpose a key to map to $i$, then we would
+expect that we wouldn't \emph{accidentally compute a whole bunch} of
+keys all mapping to the same location.
+
+If this was a little difficult to understand and wrap your head
+around, then go back and read it a couple more times. 
+This concept of defining \emph{patterns} as ``something that is easy to
+compute'' is quite powerful, and lies at the heart of a lot of CS
+theory, and fully understanding it will probably expand your view of
+computing quite a bit.
+
+Now, if you understand the idea, you may ask: what does it mean for
+something to be ``hard to compute?''
+It turns out that there is a lot of work in computational complexity
+theory on different notions for this question.
+At the center is a notion called NP-hardness, which you will learn
+about in CS270. It would be really nice if there were natural
+hash functions $h$ for which in a provable sense, the problem of
+computing $h^{-1}(i)$ were NP-hard. 
+The unfortunate truth is that this is an open question. 
+The existence (or lack thereof) of one-way hash functions is an
+incredibly important research topic, and would have profound
+implications for computational complexity theory and even more for
+cryptography and security.\footnote{If you would like to learn more
+  about this topic, check out the undergraduate cryptography class.}
+
+Returning to the connection with randomness, if nature cannot
+(efficiently) tell apart whether our hash function $h$ is
+\emph{actually} random, or just a one-way hash function, then this
+makes our hash function ``almost as good'' as random, which is a
+natural definition of \todef{pseudo-randomness}: if no patterns can be
+discovered \emph{fast}, then a function is pseudo-random.
+
+Again, Section~\ref{sec:complexity} is probably a little more
+complicated to understand during a first and second reading, so make
+sure to spend enough time digesting it. 
+
+\subsection{Practice of Hash Functions}
+As we said above, in practice, a hash function $h$ should be fast to
+compute, and it should spread out items well across the table.
+
+The first part of computing a hash function is to map items to
+integers, since that's where they should eventually end up.
+Perhaps the simplest way would be to write down the sequence of
+characters describing the item (e.g., a string, or something more
+complicated translated into a string), then look at it written in
+binary. In practice, if we only use certain characters (e.g., only
+lowercase letters), we may choose another translation (e.g., 
+`a': 1, `b': 2, $\ldots$, `z': 26). This would avoid some extra
+zeroes.
+
+Once we have obtained a number $k$, one way or another, we can do a
+number of things to it. In the end, we definitely want to take the
+number modulo $m$, so that it stays within array bounds.
+Some other standard methods are to \emph{fold} the number, by adding
+all digits (this makes sense mostly when your hash table is very
+small), or adding a weighted combination of digits.
+For instance, the hash function implemented in Java basically reads
+the number/string in base 31, in order to break up patterns. (Having
+weights as powers of primes is also a good idea.) If you look around
+on Google and Wikipedia, you'll find a large number of hash functions,
+most of them not too difficult to compute.
+
+\subsection{Another Application of Hash Functions}
+Returning a bit to our complexity-theoretic view of hashing and
+randomness, you may have noticed a completely different application.
+Consider the issue of storing a user's password. 
+If you store it in plaintext in a file, then your users are in serious
+trouble if a person breaks into the central computer --- the attacker
+can now read all of your users' passwords, and since they are probably
+reusing passwords on other sites, also break into their accounts there. 
+Believe it or not, some big companies had exactly this problem, having
+stored passwords in plain text.
+
+What you should do instead is store the passwords as a hash. In other
+words, when the user signs up with a password $p$, you store $h(p)$ in
+your file instead. 
+When the user tries to log in and enters a password $p'$, you compute
+$h(p')$ and test whether $h(p') = h(p)$. If so, you let the user log
+in; otherwise, the password was clearly wrong. Notice that you didn't
+need to store $p$ itself.
+True, there is a chance that the user entered a password $p'$ that
+collided with $p$. But if you had a good hash function, and $m$ is
+large enough, then this is very unlikely.
+And the advantage is that even someone with access to your database
+cannot figure out $p$, so they cannot log in to the user's account,
+because the hash function is hard to invert.
+
+In order to make this work, a simple heuristic for a hash function
+(something like modulo arithmetic and weighted combinations of digits)
+will not work any more. We now need functions that actually come close
+to being hard to invert. Such hash functions are called
+\todef{cryptographic hash functions}.
+Two of the most well-known (and widely used) ones are MD5 and SHA.
+We will not go into their definition in this class, but you can
+readily find them by Googling. They are not all that difficult to
+implement, though a bit slower than the simple heuristics. So you
+probably wouldn't want to use them to implement hash tables.
+
+If you ever implement a user database for your own company, please do
+remember to follow this practice --- passwords should never be stored
+unencrypted anywhere. (There are also other ways to make them more
+secure, including a technique called ``salting.'')
+
+\section{Dealing with Collisions: Chaining and Probing}
+\label{sec:resolution}
+
+We have now explored in quite some depth the question of what makes a
+good hash function. But as we said from the beginning, never mind how
+great the hash function, you will run into collisions, most likely
+when the load factor reaches $\alpha = \Theta(1/\sqrt{m})$, i.e.,
+quite early. For instance, if you have a hash table with 1000000
+elements, you will get your first collision around element 1500, with
+998500 elements of the hash table unused. So we need to deal with
+collisions.
+
+\subsection{Chaining}
+While most textbooks start with probing, chaining is really the easier
+to understand and implement method of dealing with collisions.
+The core idea is to replace each array entry $i$ of \code{a} with an array
+or linked list in which to store all elements that are mapped to $a[i]$.
+So instead of overwriting $a[i]$ when another key $k'$ maps to $i$, we
+append the entry $(k',v')$ to the list at $a[i]$. 
+When we are looking for a key $k$, we do a linear search of the list
+at $a[h(k)]$, and similarly when we remove $k$.
+A linked list (or possibly expanding array) is probably a better
+choice here than a fixed-size array.\footnote{In principle, we could
+  get fancy and actually have little sub-hashtables, or balanced
+  search trees, for each entry $a[i]$. This may actually work
+  reasonably well in practice, but it's not clear whether it'll do
+  much better than just using a larger array in the first place and
+  picking a good hash function.}
+Chaining is illustrated in Figure~\ref{fig:chaining} below, for our
+initial example:
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=1cm,arrowsize=0.1 3,framesep=0.15}
+\pspicture(-1,-4)(14,4)
+
+\BasicSetup
+
+\rput(2.5,-1){\rnode{a1}{\psframebox{42}}}
+\rput(3.5,-1){\rnode{b1}{\psframebox{17}}}
+\rput(7.5,-1){\rnode{c1}{\psframebox{8}}}
+\rput(8.5,-1){\rnode{d1}{\psframebox{48}}}
+\rput(11.5,-1){\rnode{e1}{\psframebox{25}}}
+\rput(11.5,-2.5){\rnode{e2}{\psframebox{38}}}
+\rput(11.5,-4){\rnode{e3}{\psframebox{64}}}
+
+\psset{fillstyle=solid,fillcolor=black,framesep=0.1}
+\cnodeput(2.5,0.5){a}{}
+\cnodeput(3.5,0.5){b}{}
+\cnodeput(7.5,0.5){c}{}
+\cnodeput(8.5,0.5){d}{}
+\cnodeput(11.5,0.5){e}{}
+
+\ncline{->}{a}{a1}
+\ncline{->}{b}{b1}
+\ncline{->}{c}{c1}
+\ncline{->}{d}{d1}
+\ncline{->}{e}{e1}
+\ncline{->}{e1}{e2}
+\ncline{->}{e2}{e3}
+
+\endpspicture
+\end{center}
+\caption{Illustration of chaining, still with the hash function $f(k) = k
+  \text{ mod } 13$, for a hash table of size $m=13$.
+  All \code{null} pointers are omitted. Notice that all the colliding
+  elements in bucket 12 are chained as a linked list.
+\label{fig:chaining}}
+\end{figure}
+
+\subsubsection{Runtime Analysis}
+The efficiency will depend on how long the lists in
+particular positions $i$ are. 
+If they are short (constant length), then all operations will be
+really fast. As they get longer, the running time will get dominated
+by the linear searches through the lists at $a[i]$.
+
+So we would like to figure out how long the lists will be.
+If the load factor is $\alpha$, then the \emph{average} list length
+will be exactly $\alpha$. But of course, that doesn't mean that the
+longest list would have length $\alpha$, even if the hash function were
+perfectly random. 
+And if the list lengths are very uneven, then most of the queries will
+probably be for elements that are in long lists. 
+If we write $\ell_0, \ell_1, \ldots, \ell_{m-1}$ for the list lengths
+at indices $0, 1, \ldots, m-1$ (remember that $s=\sum_i \ell_i$ is the
+total number of elements in the hash table), then the average query time is
+$\Theta(\frac{1}{s} \sum_{i} \ell_i^2)$: the reason is that with probability 
+$\ell_i/s$, we pick an element from $a[i]$ to look for, and it will
+take $\Theta(\ell_i)$ to find it. So large lists will have a large
+impact on the average query time.
+
+(This example is a bit similar to a ``mistake'' often made by colleges
+in reporting average class size. If you offer 10 classes, and class 1
+has 910 students in it, while the other classes have 10 students each,
+the ``average'' class size is 100, namely $\frac{1}{10} \cdot (910 +
+9\cdot 10)$. On the other hand, most students really experience a
+massive class size, so the average experienced class size is 
+$\frac{1}{1000} \cdot (910^2 + 9 \cdot 10^2) = 829$.)
+
+So how large do we think the largest list in a hash table will be?
+To analyze this, we'll assume a random distribution of keys. 
+Then, we are looking at distributing $s$ keys randomly into $n$ hash
+buckets. This type of analysis is typically called ``balls in bins,''
+since we can think of the items as ``balls,'' which are thrown
+randomly into ``bins;'' we then want to know facts about statistics of
+the bins. Using standard probability calculations you should have seen
+in CS170 (Binomials and Union Bounds), it is not hard to analyze this.
+The most interesting regime is when $s = \Theta(m)$, i.e., when the
+number of items is a constant fraction of the number of hash buckets. 
+Then, the largest hash bucket will have size at most $O(\log m)$ with
+high probability. On the other hand, one can also show that it will
+end up being $\Omega(\log m)$ with high probability.\footnote{When $s
+  \geq m \log(m)$, i.e., the hash table is overloaded by a factor
+  $\alpha = \Omega(\log m)$, the same type of analysis shows that
+  the largest load in any bucket will become $\Theta(\alpha)$ with
+  high probability. In other words, the law of large numbers kicks in,
+  and the buckets will be more evenly (over-)loaded.}
+So we should expect to spend about time $\Theta(\log s)$ in the worst
+case when searching for one of $s$ items in a moderately loaded hash
+table. So, interestingly, while many searches in hash tables take only
+constant time (if the lists are short), the logarithmic time we saw in
+search trees does make a comeback.
+
+The thought of overloaded hash buckets we talked about just now brings
+up another important idea: when your hash table gets too overloaded
+(and thus too inefficient), it's usually a good idea to make the array
+larger. When expanding the array, of course, it will become necessary
+to rehash all the items to their new positions, as in general their
+current position (let's say $k \text{ mod } m$) will not be the same
+as their new position ($k \text{ mod } m'$), for the new array size $m'$.
+As we will see, this applies even more strongly for probing.
+As a rule of thumb, the load factor of your hash table should usually
+be kept under $1/2$.
+
+\subsection{Probing}
+An alternative to the ``chaining'' idea is called \todef{probing} or
+\todef{open addressing}. Here, we only have our one array \code{a} of
+pairs, and no lists or buckets or subarrays. So when a collision
+occurs, we need to find a new location to place the key.
+Say that we are trying to insert a key $k$ into location $i = h(k)$,
+but $a[i]$ is already occupied by some other pair.
+So $k$ needs to go somewhere else, into some position $i'$, where we
+can find it later.
+The difference between different probing rules is in how they search
+for $i'$.
+
+\subsubsection{Linear Probing}
+Probably the simplest probing rule is \todef{linear probing}: if
+position $i$ is occupied, next try $i+1, i+2, i+3, \ldots$, until
+there is a free position. 
+Linear probing is a very bad idea in practice, and in theory.
+Suppose that we have reached a state in which half the items are
+in positions $0, \ldots, m/2$, while the remaining positions are
+empty. Now, under our useful randomness assumption, the probability
+that the next key $k$ belongs in a position $i \in \SET{0, \ldots, m/2}$
+is \half. 
+For all such position $i$, linear probing will put $k$ in position
+$m/2+1$. In other words, with probability \half, the next item will be
+placed at $m/2+1$, usually after a long linear probing search. So large
+clusters have a tendency to grow even larger.
+
+More formally, if you look at the current clusters (sequences of 1 or
+more consecutive occupied array positions), and $c_j$ is the size of
+cluster $j$, then the probability that cluster $j$ will grow by 1 is
+$c_j/m$. Whenever you have quantities whose rate of growth (or
+probability of growth) is proportional to their current size (as is
+the case here), you have a ``rich-get-richer'' dynamic, which will
+lead to a heavy tail in the size distribution. In other words, we
+would expect --- mathematically --- some very large clusters, and this
+is indeed borne out in practice.\footnote{If it amuses you, you can
+  try to write a quick simulator and verify this yourself, by putting
+  300000 elements into a hash table of 1000000 elements, then drawing
+  the occupied array positions.}
+So linear probing is a bad idea.
+
+\subsubsection{Quadratic Probing and Double Hashing}
+\todef{Quadratic probing} works as follows:
+When the key $k$ is supposed to be mapped to $i=h(k)$, but position
+$i$ is already occupied, you check the array positions
+$i+1, i+4, i+9, \ldots, i+j^2, \ldots$ in order. The advantage is that
+the sequences starting from $i$ and $i-1$ are very different looking,
+so you won't get all that clustering from lots of keys mapped to
+different locations, but in the same block. For instance, suppose that
+key $k$ is eventually stored at $i+9$, because $i+1$ and $i+4$ were
+also already in use.
+Now, key $k'$ comes along, which belongs in $h(k') = i+1$. Position
+$i+1$ is already taken, but fortunately, $k'$ now tries positions
+$i+2, i+5, i+10, \ldots$, so it won't run through the unsuccessful
+sequence $i+4, i+9$. The only clustering we could get will be from
+actual collisions, i.e., item pairs $k,k'$ with $h(k)=h(k')$, and
+there will be a lot fewer of those. Quadratic probing is illustrated
+in Figure~\ref{fig:quadratic} below.
+
+To deal with those types of collisions as well, we can use
+\todef{Double Hashing}. Here, the sequence of positions explored for
+a key $k$ depends not only on the position $i$ where it originally
+belonged, but also on the actual key $k$ itself, so that different
+keys, even if colliding under $h$, will be probing different
+sequences. More formally, in addition to $h$, we have a secondary hash
+function $h'$. Then, if $i=h(k)$ is taken, $k$ next probes the
+positions $i+h'(k), i+2h'(k), i+3h'(k), \ldots$. This way, we spread
+out the probe positions much better across elements.
+If you do intend to implement hashing with probing, this would be the
+way to go.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=1cm,arrowsize=0.1 3}
+\pspicture(-1,-1)(14,4)
+
+\BasicSetup
+
+\rput(2.5,0.5){42}
+\rput(3.5,0.5){17}
+\rput(7.5,0.5){8}
+\rput(8.5,0.5){48}
+\rput(11.5,0.5){25}
+
+\rput(-0.5,0.5){38}
+\rput(1.5,0.5){64}
+
+\rput(11.5,0){\rnode{a}{}}
+\rput(-0.5,0){\rnode{b}{}}
+\rput(2.5,0){\rnode{c}{}}
+\rput(7.5,0){\rnode{d}{}}
+\rput(1.5,0){\rnode{e}{}}
+
+\ncarc[arcangle=30]{->}{a}{b}
+\ncarc[arcangle=-20]{->}{b}{c}
+\ncarc[arcangle=-20]{->}{c}{d}
+\ncarc[arcangle=25]{->}{d}{e}
+
+\endpspicture
+\end{center}
+\caption{Quadratic probing illustrated with the hash function $h(k) = k
+  \text{ mod } 13$, for a hash table of size $m=13$. 
+  When 38 is inserted, because $h(38)=12$ is full, the next position
+  that is probed is $12+1\equiv 0\; (\text{mod } 13)$, which is
+  available, so 38 is placed there.
+  When 64 is inserted, because $h(38)=12$ is full, the next position
+  probed is $12+1 \equiv 0\; (\text{mod } 13)$, which is also full. 
+  After that, $12+4\equiv 3\; (\text{mod } 13)$ is probed, but also full. 
+  Next is $12+9\equiv 8\; (\text{mod } 13)$, which is also full. 
+  Finally, $12+16\equiv 2\; (\text{mod } 13)$ is available, so 64 is placed there.
+\label{fig:quadratic}}
+\end{figure}
+
+\subsection{Implementing Hash Tables with Probing}
+We just talked in depth about how to implement the \code{add}
+function: we compute $i=h(k)$. If $a[i]$ is unused, we place $k$
+there. Otherwise, we probe a sequence of positions, and place $k$ (and
+the corresponding value) in the first empty position among them.
+
+Of course, with probing, it is absolutely crucial to expand the hash
+table sufficiently proactively. For chaining, when the load factor
+gets high, we end up having to search through many longer lists.
+For probing, if we reach $\alpha \geq 1$, the table is full, and we
+simply cannot add any new elements.
+
+To search for a key $k$ (i.e., to implement \code{get}), we do basically
+the same thing. We start at $i=h(k)$. If the key $k$ is stored at
+position $i$, we found it, and return the corresponding value. 
+Otherwise, we follow the same probing sequence. As soon as we probe a
+position containing $k$, we have found it, and return the value.
+If in the probing sequence, we hit an empty position, that's a sign
+that $k$ is not in the array, and we can terminate.
+
+That leaves removing a key $k$. Of course, to remove $k$, we need to
+first find its position, the same way we just described for
+\code{get}. Then, we mark the position as unused, so it becomes
+available again. So far so good.
+
+But there is now a big problem. Suppose that we remove a key $k$ that
+was stored at $i$. There is another key $k'$ with $h(k') = h(k)$
+that was added at some point when position $i$ was occupied.
+Let's say we stored it in $i+1$. 
+After we delete $k$ from position $i$, we receive a \code{get}
+request for $k'$. We look in position $i$, and see that it's empty.
+So we infer that $k'$ is not in the array. In other words, we have
+removed the link that let us continue probing for $k'$, and $k'$
+cannot be found any more.
+
+This is a serious problem, and in fact, removing items from a hash
+table is quite non-trivial when probing is used. One solution is to
+completely rearrange the hash table (e.g., rehash everything) after
+each removal, but this is clearly inefficient. Most textbooks (ours
+included) usually just ignore the question altogether, or write
+something like ``Removal of items is quite challenging.'' 
+One solution which is at least correct is to have a special marker
+``Deleted'' for table cells that were once occupied, and then
+deleted. This is different from the $\perp$ marker used to denote
+entirely empty cells. This way, when we later do probing, we know to
+continue probing when hitting a ``Deleted'' cell.
+
+The downside of this approach is that after a while, most cells in the
+table may be marked ``Deleted'', making search very slow (in
+particular, when the key searched for is not in the table).
+It's probably best to keep track how many elements have been deleted,
+and rehash the entire hash table every now and then when there have
+been enough deletions.
+But frankly, in practice, if you really implement hash tables, it's
+probably a better idea to just use chaining.
+
+\section{Bloom Filters}
+\label{sec:bloom-filters}
+We have mentioned before that maps and sets are quite similar in
+nature. Remember that sets implement the following three functions on
+a set $K$ of keys:
+\begin{itemize}
+\item \code{add (KeyType k)}: adds the key to the set.
+\item \code{remove (KeyType k)}: removes the key from the set.
+\item \code{bool contains (KeyType k)}: returns whether the set
+  contains the particular key.
+\end{itemize}
+
+Sets can be considered a special case of maps, when
+we don't store any value (or a dummy value).
+When we use a hashtable to store a set, we still have to store the
+full key $k$ in position $h(k)$; otherwise, when there is a collision,
+we wouldn't be able to answer correctly whether the set contains the
+particular key, because we wouldn't know whether the position $h(k)$
+is occupied by $k$, or by another key $k'$ with $h(k') = h(k)$.
+Storing the keys could take quite a lot of space. For instance, if
+keys are 100-character strings, each key will take up about 200 bytes
+of storage in our hashtable. In this section, we will develop a data
+structure called \todef{Bloom Filters} which will store sets
+``approximately,'' in the sense that some queries will be answered
+incorrectly. In return, it will be much more space efficient.
+
+In Bloom Filters, removal of keys is typically not implemented, so we
+will ignore it, too. Let's return to our reason for storing the key:
+to avoid disastrous effects of collisions. 
+Suppose, though, that we were willing to put up with that risk.
+Then, we could make our hashtable an array of individual bits $a$.
+When we add the key $k$, we set $a[h(k)]$ to true. 
+To check whether the key $k$ is in the set, we return $a[h(k)]$.
+
+\begin{remark}
+As an aside, when you want to store an array of bits, an array of
+\code{bool} is not ideal. While a \code{bool} only encodes a single
+bit, it takes up more memory in your computer.
+The way to store a bit array is to declare an array of \code{int} and
+access the bits individually. You can do this by \emph{masking}: to
+get the \Kth{j} bit of the number $x$, you compute \code{x \& (1 << j)}
+(bitwise ``and'' with a string that has zeroes except in position
+$j$).
+To access the \Kth{j} bit overall, you access 
+\code{a[j / 32] \& (1 << (j \% 32))}.
+\end{remark}
+
+What's the problem with that? When there is a collision between $k$
+and $k'$, and key $k'$ has been put in the table (so $a[h(k')]$ has
+been set to \code{true}), we will return \code{true} also for the
+question of whether $k$ is in the table.
+This is called a \emph{false positive}: the data structure says
+``Yes,'' even though the correct answer is ``No.''
+Notice, however, that this approach gives no false negatives: when the
+data structure answers ``No,'' the key really isn't in the set.
+
+The way we defined it so far, the likelihood of false positives is
+quite high. To bring the likelihood of false positives down, what
+Bloom Filters do is mark not one but multiple positions for each key,
+and check those same positions.
+Specifically, Bloom Filters have $j$ different hash functions $h_1,
+h_2, \ldots, h_j$. The two functions are now implemented as follows:
+\begin{itemize}
+\item To add a key $k$, we set $a[h_i(k)] = \text{true}$ for $i=1, 2,
+  \ldots, j$.
+\item To check whether key $k$ is present, we check whether each of
+  $a[h_i(k)]$ is true, for $i=1, 2, \ldots, j$.
+\end{itemize}
+
+First, it's clear that we still don't get false negatives. Since we
+set all positions to \code{true} when adding a key, if one of them is
+\code{false}, then we cannot have added the key, so it's not there.
+But it's still possible that we have false positives: the different
+positions may have been set to \code{true} by multiple different keys,
+so when we check, they are all \code{true}.
+
+Let's analyze how likely this is. To do so, as we discussed earlier,
+we'll assume that we have good hash functions, so that we can treat
+them as essentially random. Suppose that we are checking the position
+$x$. What's the probability that bit $x$ has been set to \code{true}?
+
+Let's first look at just one key $k$ and one hash function $h_i$.
+The probability that $h_i(k) = x$ is $1/m$, so the probability that
+$h_i(k) \neq x$ is $1-1/m$. Therefore, the probability that all of the
+$h_i(k)$ are different from $x$ is $(1-1/m)^j$.\footnote{%
+Here, we are treating the hash functions as independent. 
+That's a somewhat more subtle issue  that researchers have been
+studying, but for our purposes, independence is a reasonable
+assumption, and dealing with how to generate independent random hash
+functions would be a bit too far afield for an intro class.}
+
+Now, if we have inserted $s$ keys into our hash table, the probability
+that all $s$ of them have completely missed position $x$ (i.e., that
+$h_i(k) \neq x$ for all $i$ and all $k$) is $((1-1/m)^j)^s = (1-1/m)^{js}$.
+Therefore, the probability that at least one key has already set
+position $x$ to true is $1-(1-1/m)^{js}$.
+To make this expression a bit easier to deal with, we can use the fact
+that for small values $y$, we have that $e^y \approx 1+y$, and apply
+that with $y= -1/m$. Then, the previous probability is roughly
+$1-e^{-js/m}$.
+
+Therefore, the probability that all $j$ positions that we are checking
+for a key $k$ are set to \code{true} (even though we haven't added $k$
+to the set) is $(1-e^{-js/m})^j$.
+
+Let's assume that the load factor is $\alpha = s/m$. What's the
+optimum number of hash functions now? With a bit of calculus, we can
+arrive at $j = \frac{1}{\alpha} \cdot \ln(2)$, which we can plug into
+our expression to get a probability of 
+
+\[
+(1-e^{-js/m})^j
+\; = \; (1-e^{-j \alpha})^j
+\; = \; (1-e^{- \ln(2)})^j
+\; = \; 2^{-\frac{1}{\alpha} \cdot \ln(2)}.
+\]
+
+Next, we want to figure out how large we need to make our Bloom Filter
+in order to get a false positive probability of at most $p$, while
+accommodating at least $s$ elements in our set. So we want to solve
+$2^{-\frac{m}{s} \cdot \ln(2)} \leq p$ for $m$. We first change this
+to $2^{\frac{m}{s} \cdot \ln(2)} \geq 1/p$, and then take logs on both
+sides and solve for $m$, which gives us that
+$m \geq \frac{s \ln(1/p)}{(\ln 2)^2} \approx 2s \ln(1/p)$ (because
+$(\ln 2)^2 \approx 0.48 \approx \half$).
+
+What does this mean? Suppose that you want a false positive rate of at
+most 0.1\%, so $p = 1/1000$. Because $\ln(1000) \approx 7$, you get
+that your table needs to have size about $14s$. In other words, to get
+a false positive rate of $1/1000$, you need to store about 14 bits per
+key. If you wanted a false positive rate of 1\%, then about 9.2 bits
+per key would be enough. The number of hash functions you should be
+using is about $\ln(2) \approx 0.7$ divided by the load factor, so it
+would be about 10 hash functions for false positive rate 0.1\%, and
+about 7 hash functions for false positive rate 1\%. Both of these are
+values commonly used in practice --- generally, the range is between
+2--20 hash functions for practical Bloom Filters.
+
+Bloom Filters have become quite a hot topic the last few years, in
+particular in the context of ``Big Data'' (e.g., Google's Big Table,
+some parts of Chrome, as well as in Bitcoin). Typically, you wouldn't
+use them to store a set in a critical application. Instead, you would
+use them as a simple pre-filter. If the Bloom Filter says ``No,'' then
+you can also respond ``No.'' When it says ``Yes,'' you start a more
+expensive post-processing step to make sure you don't mess up. This
+works well when you have somewhat smaller sets, and most answers are
+actually ``No.''

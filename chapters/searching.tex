@@ -1,0 +1,267 @@
+\section{Searching in a list}
+Returning to the beginning of the semester, let's think in a bit more
+detail about the problem of finding one particular element in a list.
+Suppose that the list is stored in an object of our datatype
+\code{List}. We wish to find whether a particular item is in the list,
+and if so, where. Let's say that the \code{List} is implemented such that
+access to any element just takes time $\Theta(1)$.
+
+The first approach is simply a linear search with a \code{for}
+loop. Start from the beginning of the list, run until the end (or
+until you find the element), and try every index in the list.
+The time for this is $O(n)$ for a list of length $n$, as we have to do
+at most a constant amount of work for each element.
+It is also $\Omega(n)$ in the worst case, as we may actually have to
+go through all of the elements to realize the element is not in the
+list. Even if the element we are looking for is just in the second
+half, we still have to go through half of the list, which still gives
+us $\Omega(n)$.  So in total, this algorithm is $\Theta(n)$.
+
+That doesn't look particularly good, but if the items are unordered in
+the list, there is not much else we can do. However, if the items in
+the list (say, integers, or perhaps strings) are sorted, then we can
+do much better with Binary Search.
+The pseudo-code, which most students have probably seen before, is as
+follows:
+
+\begin{verbatim}
+BinarySearch (Element x) {
+   Check the median of remaining elements.
+   If it equals x, we found it and are done.
+   Otherwise:
+        If x is smaller than the median element,
+           Binary search in the left half.
+        Else
+           Binary search in the right half.
+}
+\end{verbatim}
+
+Next, we want to analyze the running time of binary search somewhat
+carefully. How many steps does it take?
+Every time we check at the median, the remaining array is at most half
+as big as the current array. (Sometimes, we may get lucky and find the
+element right away, but we're looking for an upper bound on the
+\emph{worst} case here.) 
+If we're already quite experienced in analyzing running
+times of algorithms, we can identify the fact that we have one
+recursive call on an array half the size as a clear sign that the
+running time will be $O(\log n)$. 
+
+However, most of us are not that experienced yet, so we will try to
+derive the exact formula more carefully. 
+Let $T(n)$ be the worst-case running time of binary search on an array
+of size $n$. 
+Then, we can use what we learned a few weeks ago to express the
+following recurrence relation for the running time of Binary Search: 
+$T(n) \leq 1 + T(n/2), T(1) = 1$.
+The explanation is that we always spend one step (or a constant number
+of steps) for looking at the median element, and unless we are lucky
+and found the element, we recursively have to check another array
+whose size is at most $n/2$. That takes $T(n/2)$, by definition of $T$.
+
+(To be more precise, we should really replace $T(n/2)$ by 
+$\lceil T((n-1)/2) \rceil$ to make sure that all numbers are integers.
+However, experience with running time analysis tells us that rounding
+up or down virtually never is the crucial part of a running time
+analysis, and if leaving out ceilings or floors makes the calculations
+easier, it's usually worth it.)
+
+At this point, we may wonder whether we could perhaps be better off by
+not checking the middle, but, say, the $3/4$ point.
+If we did that and lucked out into the case where the element is on
+the smaller side, we would do better. But on the other hand, if the
+element we look for is in the larger part, we would spend more
+remaining time, namely $T(3n/4)$. As computer scientists, we are
+trained to be pessimistic about this kind of thing, so we need to
+analyze the worst case under the assumption that we will make the
+recursive call on an array of size $3n/4$.
+
+The inequality $T(n) \leq 1 + T(n/2), T(1) = 1$ captures the running
+time of Binary Search quite precisely, but it does not actually give
+us a formula that we can easily use to ``get a feel'' for the running
+time. So we would like a closed-form solution, i.e., one without
+recursion or sums. 
+
+To arrive there, let's unroll the recursion a few steps:
+$T(n) \leq 1 + T(n/2) \leq 1 + (1 + T(n/4)) \leq 1 + (1 + (1 + T(n/8)))$.
+In doing the unrolling, we notice that we accrue a 1 for every time we
+halve the array size.
+After $k$ steps of this (which means adding $k$ times the number 1), 
+the remaining array size is $\frac{n}{2^k}$.
+The recursion stops when the array size is (at most) 1, which means
+that we stop unrolling when $\frac{n}{2^k} \leq 1$.
+Solving this for $k$ gives us that we are guaranteed to stop as soon
+as $k > \log_2(n)$. (In fact, in this class, unless otherwise
+specified, all logarithms are base 2, so we will leave out the base
+from now on.)
+Since each iteration does a constant amount of work, we come up with
+our guess that $T(n) = \Theta(\log n)$. 
+
+A guess is nice, in particular if corroborated by good reasoning. But
+let's actually prove this formally. Any time you prove anything about
+an algorithm that involves either (1) recursion, or (2) a loop
+(\code{for} or \code{while}), it is a good bet that somewhere in your
+proof, you will want to use induction.
+This case is no exception: we will use induction on $n$, the array
+size.
+
+First, to make the proof of this guess work, we need to be a little more
+careful: for instance, for $n=1$, the result would be $\Theta(0)$,
+which says that it takes no time. So we amend our guess to
+$T(n) \leq \log(n) + 1$.
+
+Our base case is $n=1$: Here, $T(1)$ is constant (since our array has
+size 1), which we'll just treat as 1. The right-hand side is
+$\log(1) + 1 = 0+1 = 1$. So the base case works.
+
+For the induction step, we normally do induction from $n$ to $n+1$. 
+But notice that here, we are expressing $T(n)$ in terms of
+$T(\frac{n-1}{2})$, rather than in terms of $T(n-1)$. 
+So our ``regular'' induction approach doesn't work.
+The simplest way around it is to use strong induction
+instead.\footnote{For students sufficiently well-versed in induction
+  proofs, it is worth noting that the ``clean'' way to do induction
+  here would be to do induction on $\lfloor \log(n) \rfloor$ instead
+  of $n$. We could write $k=\lfloor \log(n) \rfloor$. Then, our
+  induction step would actually be from $k$ to $k+1$, and regular
+  induction would suffice. But if we don't want to perform this
+  variable substitution, strong induction is another correct way to do
+  what we want, though perhaps a slightly bigger hammer.}
+
+The strong Induction Hypothesis states that for all 
+$m < n: T(m) \leq 1 + \log(m)$.
+We have to prove that $T(n) \leq 1 + \log(n)$, and get to use the
+strong induction hypothesis for any numbers $m < n$.
+What do we know about $T(n)$? The one thing we know is the recurrence
+relation $T(n) \leq 1 + T(\lceil \frac{n-1}{2} \rceil)$.
+We can check that regardless of whether $n$ is even or odd, 
+$\lceil \frac{n-1}{2} \rceil < n$. Therefore, we are actually allowed
+to apply the induction hypothesis to $\lceil \frac{n-1}{2} \rceil$,
+which gives us that
+$T(\lceil \frac{n-1}{2} \rceil) \leq 1 + \log(\lceil \frac{n-1}{2} \rceil)$.
+Using rules for logarithms, we can rewrite the right-hand side as
+$\log(2 \cdot \lceil \frac{n-1}{2} \rceil) \leq \log(n)$.
+Plugging that in gives us that $T(n) \leq 1 + \log(n)$, as we wanted.
+This finishes the induction step and thus the proof. 
+
+We could also use induction to prove that Binary Search is actually
+correct, in particular, that it always finds any element that is
+actually in the list. We didn't get to it in class because of time
+constraints, but the interested student is encouraged to work through
+it anyway.
+
+\section{Interpolation Search}
+If we go back to our initial example for searching in a phone book, we
+might notice that as humans, we don't exactly perform Binary Search.
+For instance, if we are looking for a Mr.~or Ms.~Algorithm, we will
+probably not start in the middle of the phone book. Rather, we know
+the range of entries to expect, and that suggests that the entry is
+likely close to the beginning, so we look immediately close to the
+start. If we don't find it on the page --- for instance because we
+found Mr.~Boole instead, we will probably go about 1/3 of the way from
+the beginning to the current page.
+
+The algorithm we'd be executing is called \todef{Interpolation Search}. 
+The way it works is as follows: we need to assume that there is some
+sense in which the entries can be translated into integers, so we can
+do basic arithmetic on them. Suppose that we are left with an array
+$a[\ell \ldots r]$ with left and right endpoints $\ell, r$; and we are
+looking for an entry $x$. The range of entries is
+$a[\ell] \ldots a[r]$, so if things were evenly spaced, we would
+expect $x$ to be about a fraction $\frac{x-a[\ell]}{a[r]-a[\ell]}$
+into the array. Therefore, we would next search at position
+$m = \ell + (r-\ell) \cdot \frac{x-a[\ell]}{a[r]-a[\ell]}$.
+Then, we'd recurse just like for Binary Search.
+In fact, Interpolation Search is exactly the same code as Binary
+Search, with the exception of computing a different $m$ instead of the
+median.
+
+In a sense, Interpolation Search zooms in much faster on the part of
+the array where $x$ is likely located. In fact, one can prove that if
+the elements of the array are ``roughly evenly spread'' (in a precise
+mathematical sense which is beyond this lecture, though not
+particularly difficult), then Interpolation Search finds $x$ in
+$O(\log (\log n))$ steps, which is much faster.
+But notice that this only works when the elements are evenly spread. 
+It is not very difficult to construct somewhat weird inputs in which
+Interpolation Search does no better than Linear Search, in that it
+will scan the array from left to right. Those instances contain
+clusters of lots of people whose names start with the same letters.
+We won't include it here, but it may amuse you to work out an input
+like that by hand.
+
+\section{Keeping a List sorted}
+In order to reap all those nice benefits of a sorted \code{List}
+(Binary Search, and maybe even Interpolation Search), we have to make
+sure that it remains sorted all the time. 
+Previously, our \code{List} type had functions
+\begin{verbatim}
+void set (int pos, int data);
+int get (int pos) const;
+void insert (int pos, int data);
+void remove (int pos);
+\end{verbatim}
+
+Nothing needs to change for \code{get}, of course. 
+And for \code{remove}, it also makes sense to just remove the item at
+position \code{pos} --- that will not cause the List to become
+unsorted.
+
+The function \code{set} really does not make sense to have. If we
+choose to overwrite an element, then how do we guarantee that the
+result is sorted? We should just not be allowed to overwrite.
+
+Similarly, it doesn't really make sense for us to be allowed to insert
+an element at a position of our choice. Instead, we should have a
+function \code{insert-sorted (int data)}, which will find the
+right place to insert the element by itself.
+
+Next, we want to see how long it takes to perform the sorted
+insertions and subsequent lookups and searches.
+\begin{enumerate}
+\item If we use an array, then we can use Binary Search to find the place
+where \code{data} should go --- this takes $O(\log n)$. But after
+that, we have to shift/copy data to make room for the insertion, and
+in the worst case, this will take $\Theta(n)$, for instance, every
+time the element needs to be inserted in the first half of the array.
+Thus, the time for inserting is $\Theta(n + \log n) = \Theta(n)$.
+
+In return, the \code{get} function runs in $O(1)$, so we can now run
+Binary Search in time $O(\log n)$ any time we are looking for an
+element.
+It's a tradeoff --- slower insertion vs.~faster searching --- but it
+may be worth it to keep the array sorted. In particular, it is worth
+it if we have many (fast) lookups of elements, and fewer (expensive)
+insertions. Of course, soon enough, we'll learn about data structures
+that are fast for both.
+
+An alternative would be to insert a bunch of elements first (without
+keeping the list sorted), and only later run a sorting algorithm on
+the heretofore unsorted list. As we will learn very soon, an
+array can be sorted in $\Theta(n \log n)$; we wouldn't want to do
+that too often, but if there are stretches of time when we don't need
+the array to be sorted, this may be a worthwhile alternative.
+
+\item Using a Linked List, inserting an element in the right position
+  only takes $\Theta(1)$, once we know the position.
+But finding the right position takes $\Theta(n)$. 
+The reason is that the \code{get} function is really slow on linked
+lists because we need to scan linearly: to read position $i$ takes
+$\Theta(i)$, as we learned a few lectures ago.
+So linear search is actually the better choice to find the right
+position, and sorted insertion takes $\Theta(n)$, just like for
+arrays.
+
+What do we get in return? Absolutely nothing! Because the \code{get}
+function takes $\Theta(n)$, if we were to implement Binary Search on
+top of a linked list implementation of a Sorted List, it would take 
+$\Theta(n)$ for each step of the Binary Search, which would give a
+total of $\Theta(n \log n)$. In other words, Binary Search is much
+slower than Linear Search, and there is absolutely no point in
+implementing it on liked lists.
+For that reason, there is also pretty much no reason to keep a linked
+list in sorted order (unless it's really important for printing it in
+order). Of course, we will see in Chapter~\ref{chap:skip-lists} that a
+more elaborate version of linked lists called Skips Lists actually
+does justify a sorted linked list.
+\end{enumerate}

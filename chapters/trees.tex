@@ -1,0 +1,441 @@
+\section{The Basics}
+Trees are a special type of graph. We can think of them in two
+different ways, arriving at the same definition in the end.
+
+\begin{itemize}
+\item A tree is an undirected, connected graph without cycles.
+\item A tree is ``like a'' linked list, with each node having at most
+  one \code{prev} pointer (exactly one node having none), and being
+  allowed to have \emph{multiple} \code{next} pointers.
+\end{itemize}
+
+An undirected graph without cycles that may or may not be connected is
+called a \todef{forest}. In other words, a forest consists of one or
+more trees.
+
+In the real world, we can model quite a few things using trees:
+family trees (either by going from one person to their parents,
+grandparents, etc., or from one ancestor to his/her children,
+grandchildren, and so forth), file system hierarchies, evolutionary
+trees among species (sort of like family trees), parsing of human
+language or formulas or programming languages, shortest paths in a
+graph as computed by BFS, and a few others.
+
+Even more importantly in this class, trees are very useful as the
+basis of many more complex data structures, and often offer much
+better tradeoffs between running times of different operations than
+linear structures like arrays or linked lists. 
+When using trees in the design of data structures, we usually think of
+the trees as directed. There is a designated \todef{root node} of the
+tree, and all edges point away from it.
+
+The terminology for trees is a somewhat inconsistent mix of botany and
+family trees.
+
+\begin{itemize}
+\item If node $u$ has a directed edge to node $v$, then we say that
+  $u$ is a \todef{parent} of $v$, and $v$ is a \todef{child} of $u$.
+  If $u$ has a directed edge to nodes $v_1, v_2$, then $v_1$ and $v_2$
+  are \todef{siblings}.
+\item The \emph{root node} is the one node that does not have a
+  parent. Since every other node can be reached from the root, if we
+  have all the edges, it's enough to have access to the root to find
+  all other nodes.
+\item Nodes that can be reached from $u$ with a path of length 1 or
+  more are called \todef{descendants} of $u$. 
+  Nodes that can reach $v$ with a path of length 1 or more are called
+  \todef{ancestors} of $v$.
+\item A \todef{leaf} is a node without children. A node with at least
+  one child is called an \todef{internal node}. 
+\item When talking about rooted trees, the \todef{degree} of $v$ refers
+  to the number of edges out of a certain node. 
+  For example, if a node has one edge from its parent, and two to its
+  children, its degree is 2 (even though if we thought of it as an
+  undirected tree, we would call the degree 3).
+\item A \todef{subtree} of a tree is a subset of nodes and edges that
+  are (by themselves) connected.
+  The most frequently used subtrees are those consisting of a node $v$
+  and all its descendants. 
+  Those are called the \todef{subtree rooted at $v$}.
+\item It is frequently useful to think about the \emph{levels} of nodes.
+  For any node $v$, the level of $v$ is the number of nodes in the
+  path from the root to $v$. Thus, the root itself is at level 1, its
+  children are at level 2, its grandchildren at level 3, and so on.
+  (Some sources may start with level 0 --- make sure you use the
+  same notation as whoever you are talking with.)
+\item The \todef[of tree]{height} of a tree is the largest level of any of its
+  nodes.
+\end{itemize}
+
+Much like other structures in this class, we can use recursion to say
+formally what a rooted tree is.
+\begin{enumerate}
+\item A root $r$ by itself is a rooted tree. 
+(Depending on how we feel about calling an empty tree ``rooted'', we
+could instead use the empty tree as our base case.)
+\item If $T_1, T_2, \ldots, T_k$ are rooted trees, 
+rooted at $u_1, u_2, \ldots, u_k$, 
+then by adding a node $r$ and directed edges
+$(r,u_1), (r,u_2), \ldots, (r,u_k)$, we obtain a rooted tree.
+\end{enumerate}
+This recursive definition of a tree often aligns very naturally with
+recursive algorithms for processing data on trees, as we will see soon
+enough.
+
+There are specific subclasses of rooted trees that are frequently used
+in designing data structures, so we emphasize them here:
+\begin{enumerate}
+\item A tree is \todef[tree]{$d$-ary} if each node has degree exactly 0 or $d$.
+A \todef{binary tree} is a 2-ary tree.
+We emphasize that we sometimes allow an exception for one node to have
+only one child, as we will see below.
+\item A $d$-ary tree is \todef[tree]{full} if all leaves are at the same
+  level (so adding one more node would require a new level to be formed).
+\item Being \todef[tree]{complete} is slightly less restrictive than being full.
+ A complete $d$-ary tree has all its leaves at level $h$ or level
+ $h-1$. 
+ Usually, when talking about complete trees, we also assume that there
+ is a natural ``left-to-right'' order among the subtrees, and we
+ require that the leaves at level $h$ are as far to the left as possible.
+\end{enumerate}
+
+Many trees we will use for implementing data structures will be
+binary, but there will be an important exception of so-called
+2-3-trees, in which each internal node has degree either 2 or 3.
+
+\section{Implementing trees}
+Trees are special types of graphs, so we could just use our
+general-purpose graph implementations (adjacency matrix or adjacency
+list) to implement them.
+Adjacency matrices are not very natural, for two reasons:
+\begin{enumerate}
+\item We rarely need to find out if two specific nodes are connected
+  by an edge, but we frequently need to explore all children of a
+  given node.
+\item Trees are extremely sparse ($n-1$ edges for $n$ nodes), so
+  adjacency matrices would be extremely wasteful with space.
+\end{enumerate}
+
+Adjacency lists are a more natural fit. But we can simplify them a
+bit, since we know that each node has exactly one incoming edge
+(except the root, which has 0). So we won't need a whole list of
+incoming edges, and can just store one pointer to the parent (which is
+\code{NULL} for the root).
+This gives us the following as the structure for a node.
+
+\begin{verbatim}
+template <class T>
+class Node {
+   T data;
+   Node<T>* parent;
+   List<Node<T>*> children;   
+};
+\end{verbatim}
+
+Depending on whether the order of the children matters, we may use a 
+\code{Set<Node<T>*> children} instead of the \code{List}.
+For a parse tree of an arithmetic expression, the order of children
+clearly matters, as $5-2$ is not the same as $2-5$. 
+For some other trees, it doesn't matter as much.
+
+Many of our trees will be binary, in which case we don't need a list
+of children, and can instead have two pointers.
+
+\begin{verbatim}
+template <class T>
+class Node {
+    T data;
+    Node<T> *parent;
+    Node<T> *leftChild, *rightChild;
+};
+\end{verbatim}
+
+In both cases (binary or more general), notice that we are storing
+pointers to other nodes, rather than something like
+\code{Node<T> parent}. This is important: ideally, we'd like to
+generate just one object for each node, and then have others point to
+it. If instead, we stored nodes themselves (rather than pointers), we
+would be creating a new copy of a node for each neighbor, and
+following around the structure would be hard.
+
+\smallskip
+
+An alternative to generating dynamic objects for nodes is to store all
+nodes in one array. Then, instead of storing pointers to the parent
+and children, we can just store their indices as integers.
+This would give us the following for a binary tree (and a similar idea
+for general trees):
+
+\begin{verbatim}
+template <class T>
+class Node {
+    T data;
+    int parent;
+    int leftChild, rightChild;
+};
+\end{verbatim}
+
+If the tree is a \emph{complete binary} tree, this can be simplified
+even further. If we start numbering the nodes at 1 (for the root node), 
+then by a little bit of experimentation, we find that the parent of
+node $i$ is always node $\lfloor i/2 \rfloor$, 
+and the two children are $2i$ and $2i+1$.
+The formula looks a little different if we number the root with 0, but
+it's not much more difficult.
+It also generalizes to $d$-ary trees quite naturally.
+
+\section{Traversing a tree}
+\label{sec:trees.traversing}
+Traversing a tree means visiting each node of the tree exactly once.
+This is naturally done recursively, following the recursive definition
+for a tree. Traversing a leaf is pretty easy --- we just do whatever we
+want to do with it (such as print it or do some computation).
+Traversing an internal node $v$ involves visiting the node itself, and
+recursively visiting each of the subtrees rooted at its children
+$u_1, u_2, \ldots, u_k$ (for $k \geq 1$). 
+The main distinction is then the relative order: do we traverse the
+subtrees first, or do we visit the node $v$ itself first? This is
+exactly the difference between \todef[traversal]{post-order} traversal and
+\todef[traversal]{pre-order} traversal. 
+If the tree is binary, it also makes sense to traverse the left
+subtree first, then visit the node $v$, and then traverse the right
+subtree. This order is called \todef[traversal]{in-order}.
+We will illustrate all three with a traversal of the following tree:
+
+\begin{figure}[htb]
+\begin{center}
+\psset{xunit=0.5cm,yunit=0.5cm,arrowsize=0.1 3}
+\pspicture(-7,-1)(6,7)
+
+\psset{framesep=0.2,linecolor=black,fillstyle=none}
+
+\cnodeput(0,6){r}{0}
+\cnodeput(-3,4){u1}{1}
+\cnodeput(3,4){u2}{2}
+\cnodeput(-5,2){v1}{3}
+\cnodeput(-1,2){v2}{4}
+\cnodeput(1,2){v3}{5}
+\cnodeput(5,2){v4}{6}
+\cnodeput(-6,0){w1}{7}
+\cnodeput(-4,0){w2}{8}
+\cnodeput(-2,0){w3}{9}
+
+\ncline{->}{r}{u1}
+\ncline{->}{r}{u2}
+\ncline{->}{u1}{v1}
+\ncline{->}{u1}{v2}
+\ncline{->}{u2}{v3}
+\ncline{->}{u2}{v4}
+\ncline{->}{v1}{w1}
+\ncline{->}{v1}{w2}
+\ncline{->}{v2}{w3}
+\endpspicture
+\end{center}
+\caption{A tree $T$ on which to illustrate different traversal orders.
+We would consider $T$ a complete binary tree, even though technically,
+node 4 has only one child, violating the definition. But the concept
+is useful enough that we'd like to not worry about this small detail.}
+\end{figure}
+
+In \emph{post-order traversal}, we visit all the subtrees first, then
+process the root. Thus, the pseudo-code looks as follows:
+
+\begin{verbatim}
+void traverse (Node<T>* r) {
+   for each child u of r
+       traverse(u);
+   process r's data, e.g., output it or something;
+}
+\end{verbatim}
+
+If we apply it to our example tree, we get the following sequence:
+7 8 3 9 4 1 5 6 2 0.
+
+In \emph{pre-order traversal}, we process the root first, then visit
+all of the subtrees. The code is obtained by just swapping the order
+of the two parts in the post-order traversal pseudo-code.
+
+\begin{verbatim}
+void traverse (Node<T>* r) {
+    process r's data, e.g., output it or something;
+    for each child u of r
+        traverse(u);
+}
+\end{verbatim}
+
+For pre-order traversal, the visit order in our tree is:
+0 1 3 7 8 4 9 2 5 6.
+
+Finally, for binary trees, there is also \emph{in-order traversal}, in
+which we visit all nodes of the left subtree, then the root, and then
+all nodes of the right subtree. We get the following pseudo-code:
+
+\begin{verbatim}
+void traverse (Node<T>* r) {
+    traverse (r->leftChild);
+    process r's data, e.g., output it or something;
+    traverse (r->rightChild);
+}
+\end{verbatim}
+
+Here, the visit order for our example tree is:
+7 3 8 1 9 4 0 5 2 6
+
+In-order traversal is most natural for binary trees. If a node has
+more than 2 children, one would have to make a decision what is the
+right point to process its own data. If a node has $d$ children and
+$d-1$ pieces of data (instead of just one), then it makes sense to
+alternate between children and pieces of data, and indeed, we will see
+that when talking about 2-3 trees later.
+
+\section{Search Trees}
+\label{sec:trees.search-trees}
+The key property that makes a (binary) tree a \todef{search tree} is
+that the following holds at \emph{every} node $v$:
+
+\begin{quote}
+Let $k$ be the key in node $v$, and $T_1$ and $T_2$ the left and right
+subtrees at $v$.
+Then, all keys in $T_1$ are less than (or equal) $k$, and all keys in
+$T_2$ are greater than (or equal) $k$. 
+\end{quote}
+
+An example tree to illustrate this concept is given in
+Figure~\ref{fig:search-tree}:
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,arrowsize=0.1 3}
+\begin{pspicture}(-3,-5)(3,1)
+\pstree[levelsep=7ex]
+{\Tcircle{5}}
+{
+	\pstree
+	{\Tcircle{4}}
+	{
+		\Tcircle{2}
+		\Tn
+	}
+	\pstree
+	{\Tcircle{10}}
+    {
+    	\pstree
+		{\Tcircle{8}}
+		{
+			\Tcircle{7}
+			\Tcircle[fillstyle=solid,fillcolor=lightgray]{12}
+		}
+		\Tcircle{11}
+	}
+}
+\end{pspicture}
+\caption{An illustration of the Search Tree property. The property is
+  satisfied almost everywhere. The exception is the gray node labeled
+  ``12''. It is in the left subtree of the node labeled ``10'', which
+  violates the property that all keys in the left subtree of a given
+  node are smaller than the key in the node itself.
+\label{fig:search-tree}}
+\end{center}
+\end{figure}
+
+Let's figure out how to search for a value in a tree
+Suppose that we are looking for a key \code{k} in a tree rooted at
+\code{v}. There are three cases:
+
+\begin{enumerate}
+\item If the tree is \code{null} (i.e., an empty tree), then \code{k}
+  wasn't in the tree, which we report (e.g., with an exception).
+\item If \code{v.data == k}, then the key is at the root node, and we
+  can just return the root note in some form.
+\item If \code{k < v.key}, then the search tree property guarantees
+  that \code{k} is either in the left subtree of \code{v}, or not in
+  the tree at all. So we recursively search in the left subtree.
+\item In the final remaining case \code{k > v.key}, we recursively
+  search for \code{k} in the right subtree $T_2$.
+\end{enumerate}
+
+Notice the similarity between this search and Binary Search. 
+We repeatedly query a ``middle'' value, then decide to recurse in
+one subpart or the other. Indeed, it is quite easy from a Search Tree
+to obtain a sorted array of all entries: perform an in-order traversal
+of the tree. The advantage of Search Trees over sorted arrays is that
+we can rearrange trees just a little bit at a time, rather than having
+to shift huge numbers of items around for every insertion.
+Thus, search in a Search Tree is as fast as Binary Search
+(which is very fast), but as we will see later, insertions and
+removals are very fast, too.
+
+So far, we have asserted that search in a Search tree is fast, and
+based on our example in Figure~\ref{fig:search-tree}, it looks like
+it is. As we do the analysis of the search algorithm above, we see that
+each step takes constant time, and increases the level we are
+searching by one. 
+Thus, the time to search for an item is $\Theta(\mbox{height}(T))$.
+Whenever the height is small, say, $O(\log n)$, Search Trees will
+perform great. But will the height always be small?
+Consider the example in Figure~\ref{fig:degenerate-tree}.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,arrowsize=0.1 3}
+\begin{pspicture}(-3,-11)(3,1)
+\pstree[levelsep=7ex]
+{\Tcircle{11}}
+{
+	\pstree
+	{\Tcircle{10}}
+	{
+		\pstree
+		{\Tcircle{9}}
+		{
+			\pstree
+			{\Tcircle{8}}
+			{
+				\pstree
+				{\Tcircle{7}}
+				{
+					\pstree
+					{\Tcircle{5}}
+					{
+						\pstree
+						{\Tcircle{4}}
+						{
+							\pstree
+							{\Tcircle{2}}
+							{
+													
+							}
+							\Tn
+						}
+						\Tn
+					}
+					\Tn
+				}
+				\Tn
+			}
+			\Tn
+		}
+		\Tn
+	}
+	\Tn
+}
+\end{pspicture}
+\caption{A degenerate search tree. 
+Here, a search for the number ``1'' would take time linear in the
+number of elements, as it would just become a linear search.
+\label{fig:degenerate-tree}}
+\end{center}
+\end{figure}
+
+This tree doesn't look like a tree at all --- it's basically a linked
+list. But of course, technically speaking, it is a tree.
+Its height is $n$, the number of elements, and so a search would be
+really slow.
+
+In order to keep the height small, ideally, our tree should be close
+\todef[search tree]{balanced}: for any node, the difference in heights of its
+subtrees should not be too big. 
+That way, the tree will look almost like a complete binary tree, and
+it is easy to see that a complete binary tree has height $O(\log n)$. 
+But how do we make sure a search tree remains somewhat balanced?
+We'll learn about it soon enough --- stay tuned.

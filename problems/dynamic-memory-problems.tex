@@ -1,0 +1,91 @@
+\section{Exercises}
+
+\subsection{\ReviewQuestions}
+
+\begin{exercise}
+  What is the difference between stack and heap memory?
+  As a general rule, what is stored on the stack and what is stored on
+  the heap?
+\end{exercise}
+
+\begin{exercise}
+  When you have two variables of the same name \code{x} in a block of code,
+  which one is accessed when you refer to \code{x}?
+\end{exercise}
+
+\begin{exercise}
+  Describe what the operators \code{*} and \code{&} do.
+\end{exercise}
+
+\begin{exercise}
+  Why can the compiler not always determine all memory requirements at
+  compile time?
+\end{exercise}
+
+\begin{exercise}
+  Besides your program's variables/data, what else is stored in
+  memory on your computer? What is stored in the stack memory when
+  your program runs (besides local variables)?
+\end{exercise}
+
+\begin{exercise}
+  What could happen when you try to read/write a memory location that
+  does not belong to your program?
+\end{exercise}
+
+\begin{exercise}
+  Why is it a good idea to initialize all your pointers to
+  \code{nullptr} when you declare them
+  (unless you already know what value they need to take)?
+\end{exercise}
+
+\begin{exercise}
+  What is it called when you dynamically allocate memory but do not
+  deallocate it? Why can this be a problem?
+\end{exercise}
+
+\begin{exercise}
+  Why should you not assume a fixed number of bits/bytes for the
+  length of an integer or double?
+\end{exercise}
+
+\begin{exercise}
+  Why should you always set a pointer to \code{nullptr} after
+  deallocating its memory?
+\end{exercise}
+
+\subsection{\EasyQuestions}
+
+\begin{exercise}
+  What is the difference between \code{int *p = new int (5);}
+  and \code{int *p = new int [5];}?
+\end{exercise}
+
+\begin{exercise}
+  Suppose that you have a variable \code{int *p}, which happens to be
+  stored in location 100.
+  Which memory location is accessed when you write
+  \code{p+1}?
+  How about when you write \code{(void*) p + 1}?
+\end{exercise}
+
+\begin{exercise}
+  In the following code, will all the allocated memory be correctly
+  deallocated? Why or why not?
+\begin{verbatim}
+  int *p = new int [50];
+  for (int i = 0; i < 50; ++i)
+     p[i] = i;
+  p = nullptr;
+\end{verbatim}
+\end{exercise}
+
+\subsection{\MediumQuestions}
+\begin{exercise}
+  Fill an array with numbers, read between array positions.
+\end{exercise}
+
+\subsection{\HarderQuestions}
+\begin{exercise}
+  Skyskraper
+\end{exercise}

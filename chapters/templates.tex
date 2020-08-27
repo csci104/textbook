@@ -1,0 +1,156 @@
+Once we have carefully implemented a class like \code{List} or
+\code{Stack} or \code{Queue}, we may discover that it is quite nice,
+and we would like to also have a List or Stack or Queue of strings.
+And one for users, and for web pages, and so many other types of objects. 
+The obvious solution would be to copy the code we wrote for integers,
+and then replace the word \code{int} with \code{string} everywhere.
+This will cause a lot of code duplication.
+In particular, imagine now that after making 20 different copies, we
+discover that the original implementation of \code{List}
+actually had a few bugs. Now we have to fix them in all copies.
+
+What we'd really want is a mechanism for creating a ``generic''
+\code{List} class, which allows us to substitute in any type of
+data, rather than just \code{int}, or just \code{string}.
+This way, we avoid code duplication and all the problems it creates
+(in particular in terms of debugging and keeping versions in synch).
+
+The C++ mechanism for doing this is called \todef{templates}. 
+You've already used this when using the C++ STL (Standard Template
+Library), and even earlier when using \code{Vector<...>}.
+The syntax for creating your own template classes is a little clunky,
+and because of the particular way in which C++ implements it, it
+unfortunately also forces us to give up some of our good coding practices. 
+(It was not originally part of the C++ design, but rather grafted on
+top later, which explains why it does not fit very smoothly.)
+
+The basic way of defining templates classes is explained first via an
+implementation of a generic \code{struct Item}: 
+\begin{verbatim}
+template <class T>
+struct Item
+{
+    T data;
+    Item<T> *prev, *next;
+}
+\end{verbatim}
+
+This tells C++ that we are defining a template class, which will be
+generally based on another class. We call that class \code{T} for now.
+By writing this, we can treat \code{T} as though it were an actual
+name of an existing class.
+
+What really happens is the following. 
+Suppose that in some later code, we want to create an
+\code{Item} for strings. We will now write:
+
+\begin{verbatim}
+Item<string> *it = new Item<string>;
+\end{verbatim}
+
+When the compiler sees this code, it will copy over the template code,
+and wherever it sees \code{T}, it will instead substitute
+\code{string}. In other words, it will exactly do the text replacement
+that we wanted to avoid doing by hand. Of course, in this way, we only
+maintain one piece of code, and the rest is generated only at compile
+time, and automatically. That's how templates save us work.
+
+We can now apply the same ideas to our LinkedList class:
+
+\begin{verbatim}
+template <class T>
+class LinkedList {
+  public:
+    LinkedList ();
+    ~LinkedList ();
+    void append (T value);
+    void remove (Item<T> *toRemove);
+    void printlist ();
+  
+  private:
+    Item<T> *head;
+}
+\end{verbatim}
+   
+When we implement class functions of template classes, the syntax is
+as follows:
+
+\begin{verbatim}
+template <class T>
+LinkedList<T>::add (T item) {
+     //code
+}
+\end{verbatim}
+
+Note the \code{template<class T>} line and the
+\code{<T>} in the class name. 
+You have to put these in front of \emph{each} member function
+definition; otherwise, how is the compiler to know that you are
+implementing a member function of the template class?
+Usually, if you get a ``template undefined'' error, you might have
+missed a \code{<T>}.
+(Note that the identifier \code{T} is arbitrary ---
+you can use \code{X} or \code{Type} or whatever). 
+
+By the way, the keyword \code{template} cannot be used just with
+classes, but also with other things, such as functions.
+For instance, we could write the following:
+
+\begin{verbatim}
+template <class Y>
+Y minimum (Y a, Y b)
+{ if (a < b) return a; else return b; }
+\end{verbatim}
+
+Another thing worth noting about templates is that you can't just use
+one type: you can use multiple types. For instance, remember
+that a \code{map} has two types: one for the key, and one for the
+value. We could specify that as follows:
+
+\begin{verbatim}
+template <class keyType, class valueType>
+class map
+{
+  // prototypes of functions and data go here
+}
+\end{verbatim}
+
+Templates were kind of grafted on top of C++, and not really part of
+the initial design. That is why the syntax is rather unpleasant, and
+the ``obvious'' way of doing things causes all kinds of compiler and
+linker problems. In order to get things to work, you will sometimes
+need to deviate from good coding practices, for instance by having 
+\code{\#include} of a \code{.cpp} file.
+Check the course coding guide for detailed information
+on how to deal with some of the most common problems.
+Seriously, read it very carefully before attempting to code anything
+with templates. It will save you many hours of debugging - promised!
+
+\section{Some other considerations}
+Earlier on, in Chapter~\ref{chap:overloading}, we learned about friend
+functions. Friend functions require some extra care when you combine
+them with defining your own template classes.
+
+When the function you want to declare as a friend takes a template
+parameter (because your class is templated), you need to say so inside
+the class definition, and give it a different symbolic name to avoid
+ambiguity. 
+
+For instance, suppose that you want to implement a generic
+``multiplication'' of an integer with an array --- maybe it
+concatenates the array with itself $n$ times.
+So you'd need to overload the \code{*} operator and declare that
+operator a friend of your \code{ArrayList} class.
+
+\begin{verbatim}
+template <class T>
+class ArrayList { 
+  // other stuff
+  template <class TT>
+    friend ArrayList<TT> operator* (int n, const ArrayList<TT> & oldArray);
+}
+\end{verbatim}
+
+Notice that we named the other template parameter something other than
+that \code{T}; here, we used \code{TT}.
+

@@ -1,0 +1,367 @@
+For another implementation of maps, we return to some of our early
+days, where we simply used an array or linked list to store the
+key-value pairs. At the time, we said that there was no reason to keep
+a linked list sorted, because to find the right position, we couldn't
+take shortcuts like jumping to the middle of the list, which is what
+we need to do for Binary Search. Once we have found the right
+position, insertion and removal are constant time, which is an
+advantage of linked lists over arrays.
+
+While standard linked lists don't have any shortcuts to jump to the
+middle of the list or other places, there is no reason why we
+shouldn't be able to introduce such shortcuts. For instance, from the
+first position, maybe we want a shortcut to the middle, and to the
+elements roughly $1/4, 1/8, \ldots$ of the way. From the middle, maybe
+we'd want shortcuts to the elements $3/4, 5/8, 9/16, \ldots$ of the
+way. And so on. 
+That way, we could basically simulate Binary Search in a linked list,
+reaping the benefits of the fast insertion and removal of linked lists
+while also getting $O(\log n)$ lookup time. This is the basic idea
+behind Skip Lists.
+
+\section{The Basics of a Skip List}
+In reality, to keep the structure a bit simpler, we don't have the
+shortcuts from 1 to $n/2^k$, but rather to multiples of $2^k$, for
+each $k$. We can think of building $\log n$ linked lists, each
+representing a faster and faster lane of the ``linked list highway.''
+The slowest ``lane'' is the original sorted linked list.
+The next faster ``lane'' skips every other element.
+The next faster one then skips every other element of that lane. And
+so forth, until we get to the superhighway, which only contains the
+first and last element.
+
+To simplify the presentation and implementation a bit, one typically
+inserts at the beginning of the list an element with key $-\infty$
+(which is used as the head), and at the end an element with key
+$\infty$, used as the tail.
+This avoids having to deal with a number of checks for \code{NULL},
+but otherwise does not really affect the implementation.
+
+First, notice that in terms of implementation, to have all these
+shortcut links, each node now has an array of \code{next} pointers,
+rather than a single one. So the \code{Node} data structure changes as
+follows:
+
+\begin{verbatim}
+template <class KeyType, class ValueType>
+struct Node {
+  KeyType key;
+  ValueType value;
+  Node **next;  // array of next pointers
+}
+\end{verbatim}
+
+A diagram of what a Skip List would look like is given in
+Figure~\ref{fig:skip-list-example}.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{xunit=0.7cm,yunit=1cm,arrowsize=0.1 3,framesep=0.15}
+\small
+\pspicture(-1,-0.5)(23,2.5)
+
+\rput(0,0){\rnode{a0}{\psframebox{$-\infty$}}}
+\rput(2,0){\rnode{a1}{\psframebox{\phantom{0}1}}}
+\rput(4,0){\rnode{a2}{\psframebox{\phantom{0}3}}}
+\rput(6,0){\rnode{a3}{\psframebox{\phantom{0}4}}}
+\rput(8,0){\rnode{a4}{\psframebox{\phantom{0}8}}}
+\rput(10,0){\rnode{a5}{\psframebox{10}}}
+\rput(12,0){\rnode{a6}{\psframebox{13}}}
+\rput(14,0){\rnode{a7}{\psframebox{17}}}
+\rput(16,0){\rnode{a8}{\psframebox{21}}}
+\rput(18,0){\rnode{a9}{\psframebox{22}}}
+\rput(20,0){\rnode{a10}{\psframebox{27}}}
+\rput(22,0){\rnode{a11}{\psframebox{$\infty$}}}
+ 
+\ncline{->}{a0}{a1} 
+\ncline{->}{a1}{a2}
+\ncline{->}{a2}{a3}
+\ncline{->}{a3}{a4}
+\ncline{->}{a4}{a5}
+\ncline{->}{a5}{a6}
+\ncline{->}{a6}{a7}
+\ncline{->}{a7}{a8}
+\ncline{->}{a8}{a9}
+\ncline{->}{a9}{a10}
+\ncline{->}{a10}{a11}
+
+\rput(0,0.5){\rnode{b0}{\psframebox{\phantom{$-\infty$}}}}
+\rput(4,0.5){\rnode{b2}{\psframebox{\phantom{03}}}}
+\rput(8,0.5){\rnode{b4}{\psframebox{\phantom{08}}}}
+\rput(12,0.5){\rnode{b6}{\psframebox{\phantom{13}}}}
+\rput(16,0.5){\rnode{b8}{\psframebox{\phantom{21}}}}
+\rput(20,0.5){\rnode{b10}{\psframebox{\phantom{27}}}}
+\rput(22,0.5){\rnode{b11}{\psframebox{\phantom{$\infty$}}}}
+
+\ncline{->}{b0}{b2}
+\ncline{->}{b2}{b4}
+\ncline{->}{b4}{b6}
+\ncline{->}{b6}{b8}
+\ncline{->}{b8}{b10}
+\ncline{->}{b10}{b11}
+
+\rput(0,1){\rnode{c0}{\psframebox{\phantom{$-\infty$}}}}
+\rput(8,1){\rnode{c4}{\psframebox{\phantom{08}}}}
+\rput(16,1){\rnode{c8}{\psframebox{\phantom{21}}}}
+\rput(22,1){\rnode{c11}{\psframebox{\phantom{$\infty$}}}}
+
+\ncline{->}{c0}{c4}
+\ncline{->}{c4}{c8}
+\ncline{->}{c8}{c11}
+
+\rput(0,1.5){\rnode{d0}{\psframebox{\phantom{$-\infty$}}}}
+\rput(16,1.5){\rnode{d8}{\psframebox{\phantom{21}}}}
+\rput(22,1.5){\rnode{d11}{\psframebox{\phantom{$\infty$}}}}
+
+\ncline{->}{d0}{d8}
+\ncline{->}{d8}{d11}
+
+\rput(0,2){\rnode{e0}{\psframebox{\phantom{$-\infty$}}}}
+\rput(22,2){\rnode{e11}{\psframebox{\phantom{$\infty$}}}}
+
+\ncline{->}{e0}{e11}
+
+\endpspicture
+\caption{A skip list with 10 ``real'' keys and $-\infty, \infty$ keys.
+\label{fig:skip-list-example}}
+\end{center}
+\end{figure}
+
+Now let's look for the key `17'. We start at the list element with
+$-\infty$, and see if the ``fastest'' link gets us somewhere
+useful. Because $\infty > 17$, it takes us too far, so we try the next
+lower link. That gets us to 21, which is still greater than 17, so we
+try the next lower one. That gets us to 8, which is less than 17, so
+we follow it. From 8, we try the next link at the same level, but that
+again takes us too far (21), so we go one level lower, and get to 13,
+which is less than 17, so we take it. Its next link at this level
+again takes us to 21, so we go down a level, and find 17.
+Generally, the search procedure looks as follows:
+
+\begin{verbatim}
+int level = maxlevel; // maxlevel is the number of links per node
+curr[level] = head;
+while (level > 0) {
+   curr[level-1] = curr[level];
+   level --;
+   while (curr[level]->next[level]->key <= key)
+         curr[level] = curr[level]->next[level];
+}
+\end{verbatim}
+
+We didn't really have to maintain a whole array of \code{curr}
+pointers, but it is not really extra work, and useful for insertions
+or deletions. The idea of the search procedure is to start with the
+``fastest'' link, and follow it for as long as we can while staying
+smaller than (or equal to) the key. Then, we go down a level, and
+continue from there. When this procedure terminates, we have the
+useful property that for all levels, 
+\code{curr[level]->key <= key < curr[level]->next[level]->key}.
+This means that we have found the element in \code{curr[0]}, or if we
+failed to find it, we know exactly where to insert it.
+
+\section{Analysis of Basic Skip Lists}
+Let's analyze how long the search procedure takes, and also how much
+extra memory we spend on all these extra pointers. 
+(Remember that for Search Trees and Hash Tables, we used only a linear
+amount of space in the number of items in the map.)
+
+First, the total number of levels traversed is equal to
+\code{maxlevel}. Typically, we will set \code{maxlevel} to $\log n$,
+or a reasonable upper bound on that value. At each level, we take at
+most one step. Why is that? Each step at level $k$ moves $2^k$
+positions forward in the list. If we took two steps, we would move
+forward $2 \cdot 2^k = 2^{k+1}$ steps. But that amount would have been
+available at level $k+1$. We switched down to level $k$, which means
+that stepping forward $2^{k+1}$ positions would have gotten us to a
+key that is too large. So the procedure performs at most one step (and
+thus constant work) at each level, for a total of $\Theta(\log n)$.
+
+How much memory is used? It depends a bit on how careful we are. 
+If we reserve room for $\log n$ links for every one of the $n$ nodes,
+then the total memory is $\Theta(n \log n)$.  
+But if we vary the amount of memory allocated in each node to reflect
+the actual number of links it has, we see that half the nodes have
+only one link, and a quarter of the nodes have two links, and $1/8$ of
+the nodes have three links, and so on. Generally, a $2^{-k}$ fraction
+has $k$ links. So the total number of links is
+$\sum_{k=1}^{\log n} k \cdot n/2^{k}$. We have computed this sum
+before, in Section~\ref{sec:amortized:binary-counter}, where we found
+out that it was $\Theta(n)$. So if we are careful with our
+implementation, the memory is in fact linear.
+
+You may have noticed that so far, we have said very little about how
+to implement \code{add} or \code{remove}, besides saying that having
+all of the \code{curr[level]} is quite useful to implement them.
+If you look at Figure~\ref{fig:skip-list-example}, you might get a
+little worried. What happens if we insert the key `2'?
+We would be able to do this quickly, but what happens to all of our
+nice pointers? The key `3' is now supposed to have an extra pointer,
+whereas `4' is not supposed to have one, and so on. We would need to
+update the pointer structure of \emph{every} element of the linked
+list, meaning that the running time is $\Theta(n)$ for insertions, and
+similarly for removals.
+
+For the ``perfectly clean'' version of Skip Lists we have seen so far,
+that is unavoidable: we couldn't hope to maintain all those perfectly
+arranged links without doing significant updating each time. 
+Thus, as presented so far, Skip Lists would really only be useful if
+insertions and removals are exceedingly rare (say, they only happen
+during initialization), while we spend a lot of time searching for
+keys. If instead, we also want fast insertions and removals, we have
+to give up on the perfection of the Skip List structure, and settle
+for something that only closely resembles it. There are different ways
+to implement such Skip Lists, but the easiest is to use randomization,
+and we will discuss it next.
+
+\section{Randomized Skip Lists}
+If you squint at Figure~\ref{fig:skip-list-example} (rather than
+looking carefully), you may notice that the key property is really
+that the fraction of nodes that have $k$ pointers be roughly $2^{-k}$. 
+We don't need them to be perfectly spaced, so long as there are no
+massive gaps, and they don't completely ``bunch up'' (e.g., all
+long-range pointers are in the left half of the linked list).
+In order to maintain such a property without a lot of effort,
+randomization is a very useful tool.
+
+To illustrate, imagine that you are organizing an event, for which you
+give out blue wristbands. You would like to have roughly half of
+the visitors wear blue wristbands, and the other half no wristbands.
+The problem is that people arrive and depart as they please.
+If you were a control freak, you could constantly check all the exits,
+and as soon as you see two people with blue wristbands leave, you go
+into the room and ask someone else to put on a blue wristband to
+balance this out. That would be a lot of work.
+
+If you only need to get it roughly right, then you could just flip a
+coin at the time of arrival for each person, to decide if they will
+get a wristband.
+This will not get the proportions perfectly right, but approximately.
+Of course, if the departures were correlated with whether a person has
+a wristband (e.g., people with wristbands are somehow unhappy and leave
+early), then this would not work. But if the wristband is
+uncorrelated with departure time, you would expect that the two groups
+would leave at roughly the same rate, so your populations would not
+deviate too far from half and half.
+
+We can extend this idea further. If you want half of the blue
+wristband people to also have a green wristband, you can just flip a
+second coin for every blue wristband wearer. And if you want half of
+the blue-green people to also have a yellow wristband, you flip
+another coin. More generally, what we can do is keep flipping coins
+until we see the first tails. The number of flips that this took will
+be the number of wristbands that the person gets. Notice that the
+probability of seeing exactly $k$ heads in a row, followed by tails,
+is $2^{-(k+1)}$. So that's the fraction of people with $k$
+wristbands. (This distribution of how many flips it took until we got
+tails is called the \emph{geometric distribution}.)
+
+We can directly apply this idea to Skip Lists. Whenever a new key is
+inserted, we generate its number of links according to the geometric
+distribution.\footnote{We could cap this distribution at some value we
+  never want to exceed.} 
+So far, we have described the geometric distribution with parameter
+\half, but we could instead use any fixed parameter $p \in (0,1)$: in
+our wristband example, we could give a $p$ fraction of the guests a
+blue wristband, and a $p$ fraction of those also a green wristband,
+and so on. That would correspond to the geometric distribution with
+parameter $1-p$.  
+(The parameter of a geometric distribution is the probability of
+\emph{stopping} in each step, not of continuing.)
+
+We call the number $k$ (the number of heads we saw, i.e., the number
+of edges a node gets minus one) its \emph{level}. 
+Thus, in Figure~\ref{fig:skip-list-example}, the keys 1 and 4 are at
+level 0 (having one edge), the key 3 is at level 1, and 21 is at level 3. 
+Because our search procedure produces a whole array \code{curr} of
+predecessors, we can insert the new key as a new 
+\code{next[i]} pointer for the right nodes at the right levels, and
+similarly give it the correct \code{next[i]} pointers. These are just
+standard insertions into a linked list.
+
+Any time an algorithm or data structure uses randomness, there is a
+chance that things will go wrong, e.g., we may end up putting all the
+nodes at the same level, thus producing just a standard linked list.
+While it is \emph{possible} for this to happen, it is also exceedingly
+unlikely. We will show that, assuming that removals of keys happen
+independently of the number of links that a key has, finding a key
+still takes $O(\log n)$ steps in expectation. (In fact, one can show
+that this happens with high probability, not just on average, but we
+won't do that here.)
+
+To analyze how many steps it takes to find the correct location for a
+key (to look up, remove, or insert), we consider the sequence of steps
+taken. 
+Starting at the highest level $L$, 
+at each point, we take the highest level step that is applicable.
+The level we can take will decrease over time, until we find the
+target key. To analyze the number of steps, we will look at the
+sequence \emph{in reverse}. 
+That is, we start at the target key, and gradually walk to the left
+until we hit the head of the Skip List. Whenever we reach a node at
+level $k$, we continue by using level-$k$ edges until we reach a node
+of even higher level $k'$, at which point we switch to those edges,
+and so on. Notice that this monotone increase of levels is possible:
+if we have a node at level $k$, and follow its level-$k$ edge to the
+left, it must reach --- by definition --- another node at level $k$ or
+higher.
+
+Before analyzing the number of steps this takes, let's verify that the
+search path we produce backwards in this way is the same as what we
+produce searching for the key from the head in the standard search.
+Whenever we switch to level $k$ for the first time in the backwards
+path, that means that this particular node is the rightmost level-$k$
+node to the left of the target. Why? Because otherwise, an earlier
+level-$k$ node would have been available, and we would have used that
+node's level-$k$ edge. So the points at which we switch up to level
+$k$ are exactly the level-$k$ predecessors of the target.
+But we saw earlier that those are exactly the nodes at which the real
+search switches \emph{down} to the next level. So all those nodes are
+the same. In between level switches, in both searches, we follow the
+edges at the corresponding level, so overall, the search path is the
+same for both.
+
+Next, let's figure out how many steps the search spends at each level,
+going from 0 to the maximum level $L$. Whenever the search reaches a node
+$v$ in the list via a level-$k$ edge, $v$ must be at level at least
+$k$. The probability that its next coin flip came up heads, promoting
+it to level $k+1$ or higher, is $p$. Hence, in each step, the
+probability of going up a level is $p$.
+The expected number of steps to go up one level is therefore
+the expectation of a geometric random variable with parameter $p$.
+(Here, $p$ is indeed the parameter that our quest to make it up a
+level ends; earlier, the $1-p$ was the parameter that a given node
+stops adding more links.)
+The expectation of a geometric random variable with parameter $p$ is
+$1/p$. You might either just remember this fact, or we can quickly
+derive it here.
+Let $T$ be the expected number of steps until we see heads.
+With probability $p$, this is equal to 1, and with probability $1-p$,
+the first coin flip was tails, so we have spent one flip and now have
+to start from scratch. 
+This gives us that $T = p \cdot 1 + (1-p) \cdot (1+T)$. We can solve
+this as $pT = p + (1-p)$, which gives us $T = 1/p$.
+
+Now, the total number of steps is the sum of steps to go from each
+level to the next. Because expectations are linear, we get that the
+expected number of steps in a search is 
+$\sum_{k=0}^L \frac{1}{1-p} = \frac{L}{1-p}$. 
+Then, once we are at the highest level, what's the maximum number of
+steps we have to take? Because in expectation, only $n/2^L$ nodes have
+made it to level $L$, this is the number of steps we have to take in
+addition. In particular, if we choose $L \geq \log_2 n$ (which we
+should), this extra number of steps is constant.
+Then, the total amount of time for the search is
+$O(\frac{L}{1-p} + 1) = O(\log n)$, so long as $p$ is a constant.
+($p=\half$ is a perfectly fine choice here.)
+
+So in summary, we get that the expected time for \code{get} is 
+$O(\log n)$ in expectation. Importantly, notice that the expectation
+here is taken over the random choices that the data structure makes
+(which level to put nodes at), not over random inputs. 
+That is, we do not need to assume anything about keys being random.
+Randomness is a very important part of computing. It often allows us
+to come up with much simpler and more elegant algorithms and data
+structures than if we had to make all structures deterministic. You
+will encounter some more examples in later classes, and most likely in
+the rest of your career as a computer scientist.

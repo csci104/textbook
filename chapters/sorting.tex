@@ -1,0 +1,1006 @@
+Next, we will learn how to sort items.
+In order to sort items, we need to be able to compare them, i.e., 
+to determine whether some item $x$ is smaller, greater, or equal to
+some other item $y$. 
+The goal of sorting is to put an array/list/vector of such items
+into non-decreasing or non-increasing order. 
+Non-decreasing is basically the same as increasing, except that we
+allow multiple equal numbers. 
+For example, \code{2 3 3 5 7 9} is an array of integers in
+non-decreasing order (but not increasing, because it repeats an item).
+
+Formally, to say that an array or list is sorted means that
+$\forall i \in S: a[i+1] \geq a[i]$, 
+where $S = \{0, 1, 2, ..., \text{size}-2\}$ is the set of all indices
+in the array.
+Furthermore, in order to claim that an algorithm \emph{sorts} an
+array, not only does the final array need to be sorted, it also has to
+still contain the same elements as before. Otherwise, we could use the
+following silly algorithm to obtain a sorted array:
+\begin{verbatim}
+for (int i = 0; i < n; i ++)
+    a[i] = 0;
+\end{verbatim}
+Clearly, this is not what we intended.
+
+\section{Applications of Sorting}
+Sorting is useful for a number of reasons, including the following:
+
+\begin{itemize}
+\item Understanding sorting algorithms helps to illustrate central
+  algorithm design and analysis concepts which will be covered in more
+  depth in an algorithms class.
+\item Humans usually prefer sorted data to read.
+\item A sorted array is much easier to search in, e.g., using Binary Search.
+\item Sorting makes it much easier to discover patterns or statistics
+  of data items, such as the median or other moments.
+\item Sorting often helps in comparing lists (or sets), and performing
+  operations like intersection of sets, finding out if two lists
+  contain the same elements, finding if there are duplicates in a list,
+  etc.
+\end{itemize}
+
+As an illustration of the last type of problem, we solved in class the
+following problem: given two lists of numbers, find if the two lists
+contain the same numbers. 
+Half of the class was asked to solve this problem with unsorted lists,
+while the other half was using sorted lists. 
+The ones with sorted lists were much faster than those with unsorted
+lists.
+
+If the lists are sorted, we can simply go through both lists in
+parallel. If we ever discover a position where the lists differ,
+that's all the evidence we need to conclude that the lists are not the
+same. If we reach the end without finding such a position, the lists
+are the same. The running time is $\Theta(n)$ when the lists have
+size $n$.
+
+When the lists are unsorted, we can't really do anything much better
+than going through one list, and for each element, look for it in the
+other list, which requires a linear search. 
+Since we need to go through every element in the second list for every
+element in the first list, the runtime is $\Theta (n^2)$.
+
+Thus, sorting really speeds up the goal of computing whether two sets
+are the same. This is true for many other similar problems on one or
+two lists, where sorting improves the performance from $\Theta(n^2)$ to
+$\Theta(n)$. These types of questions are also classic interview
+questions, since they test both knowledge of sorting, and problem
+solving skills. 
+
+We will learn soon that there are algorithms sorting an
+array of $n$ elements in $\Theta(n \log n)$ time. Thus, sorting both
+lists first is actually faster in our set identity example than trying
+to compute the intersection on unsorted lists.
+In general, when an interviewer tells you to solve a problem in time
+$O(n \log n)$, there is a good chance that his intended solution uses
+sorting of an array. (Of course, there are other problems that can be
+nicely solved in time $O(n \log n)$. But among the interview questions
+for students early in their career, sorting is very prominent among
+$O(n \log n)$ algorithms.)
+
+\section{Stability of sorting algorithm}
+We said above that two properties are absolutely essential for sorting
+algorithms: (1) The output must be sorted, and (2) It must still
+contain the same elements. A third property is not essential, but
+often useful. It is called \todef{stability}: an algorithm is stable if
+every two elements that have the same value have the same relative
+order after sorting as before. As an example, consider the following
+input: \code{3(red) 5 1 3(blue)}: we have two distinct elements, both
+with the value 3.
+The following would be the \todef{stably sorted} output: \code{1 3(red) 3(blue) 5}.
+The following output is also sorted, but \emph{unstably}:
+\code{1 3(blue) 3(red) 5}.
+
+Stability of an algorithm can be very useful when we have multiple sorting
+criteria, which happens routinely when implementing a Spreadsheet or
+Database system. 
+For example, suppose that you want to sort all USC students by GPA;
+if two students have the same GPA, the two students should be ordered
+alphabetically.
+
+One solution of this problem would be to define the relationship of
+\code{a} and \code{b} to be:
+\code{a < b}  if \code{(a.GPA < b.GPA || (a.GPA == b.GPA \&\& a.name < b.name))}.
+This would work, but doing things this way requires us to define more
+and more sorting rules whenever we want another tie breaker.
+
+An alternative, perhaps more convenient, solution would be to first
+sort by name, then sort by GPA. 
+If we are using a stable sorting algorithm, the alphabetical
+order among students will still be in place, i.e., will be the tie
+breaker among students with the same GPA.
+
+\section{Bubble Sort}
+
+The first sorting algorithm we came up with in class was \todef{Bubble
+  Sort}. 
+In Bubble Sort, we compare the first with the second entry and swap
+them if they are out of order, then the second with the third,
+swapping if necessary, etc. Once we reach the end of the array, we
+know that the largest element is there --- it has ``bubbled up'' to
+the top. Now, we start again with the first element, and so on,
+terminating one spot earlier. This gets repeated at most $n-1$ times.
+The code is as follows:
+
+\begin{verbatim}
+for (int i = n-1; i > 0; i--) {
+    for (int j = 0; j < i; j++) {
+        if (a[j] > a[j+1]) {
+            a.swap(j, j+1);
+        }
+    }
+}
+\end{verbatim}
+
+This algorithm is stable, since it only swaps two items if the latter one
+is strictly greater, so equal-valued items will stay in their original
+order.
+
+To formally prove correctness of an algorithm based on \code{for}
+loops, the typical technique is to use induction on the iterations.
+The induction hypothesis for this type of proof is also called
+the \todef{loop invariant}: it captures a property of the variables
+that is true after each iteration of the loop when one runs the
+algorithm. While we will not do a formal proof by induction here,
+it is worth thinking about the loop invariant, since it also
+sheds insight into how an algorithm works.
+Here, the loop invariant is that after $k$ iterations, the following
+are true:
+
+\begin{itemize}
+\item The last $k$ positions of the array contain the largest $k$
+  elements, and are sorted.
+  (The first $n-k$ positions are not necessarily sorted yet.) 
+\item The entire array still contains the same elements as at the beginning.
+\end{itemize}
+
+We would prove this claim by induction on $k$. It holds trivially for
+$k=0$, and when we establish it for $k=n$, it implies that the entire
+array is sorted. A pictorial representation of the loop invariant of
+BubbleSort is given in Figure~\ref{fig:bubblesort}.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.05cm,arrowsize=0.1 3}
+\pspicture(0,-10)(110,110)
+
+\psline{->}(0,0)(110,0)
+\psline{->}(0,0)(0,110)
+\psline{-}(85,5)(85,-5)
+\rput(85,-10){$n-k$}
+
+\psdots*[dotstyle=*](0,75)(1,31)(2,54)(3,42)(4,62)(5,22)(6,77)(7,78)(8,45)(9,43)(10,24)(11,17)(12,24)(13,74)(14,76)(15,72)(16,80)(17,34)(18,30)(19,80)(20,74)(21,0)(22,37)(23,4)(24,28)(25,71)(26,5)(27,36)(28,61)(29,71)(30,44)(31,72)(32,45)(33,36)(34,55)(35,4)(36,44)(37,15)(38,59)(39,60)(40,72)(41,51)(42,78)(43,19)(44,4)(45,40)(46,79)(47,15)(48,21)(49,32)(50,42)(51,8)(52,10)(53,4)(54,79)(55,50)(56,70)(57,54)(58,27)(59,34)(60,67)(61,54)(62,66)(63,79)(64,46)(65,84)(66,18)(67,10)(68,7)(69,56)(70,34)(71,44)(72,57)(73,80)(74,63)(75,28)(76,41)(77,30)(78,60)(79,47)(80,70)(81,46)(82,28)(83,56)(84,72)(86,86)(87,87)(88,88)(89,89)(90,90)(91,91)(92,92)(93,93)(94,94)(95,95)(96,96)(97,97)(98,98)(99,99)
+
+\endpspicture
+\end{center}
+\caption{A pictorial representation of the loop invariant of Bubble Sort. \label{fig:bubblesort}}
+\end{figure}
+
+To analyze the running time of the algorithm, we start --- as with any
+other loop-based algorithm we analyze --- from the innermost loop.
+The inner \code{for} loop contains one statement, and it is always
+going to run in constant time regardless of size of input, giving us $\Theta(1)$
+The \code{for} loop causes this statement to run $\Theta(i)$
+times, so the inner loop has a total run time of 
+$\Theta (i) \cdot \Theta (1) = \Theta (i)$.
+
+Notice that \code{i} in the inner \code{for} loop runtime is really dependent
+on which iteration the algorithm is currently on, and so is the time
+that the inner loop takes. 
+For example, the first time that the loop is run, \code{i} is $n-1$, so
+the loop takes $n$ steps. The last time the loop is run, 
+\code{i} is 1, meaning that the inner loop only runs over 1
+or 2 steps. 
+To analyze the running time of the entire algorithm, we need to take
+the total time for the outer loop. That time is obtained by summing
+the execution time of the inner loop over all iterations of the outer
+loop. Thus --- as always --- when analyzing a loop, we get a sum in
+our formula:
+
+\begin{align*}
+\sum_{i=1}^{n-1} \Theta (i) 
+& = \Theta ( \sum_{i=1}^{n-1} i )
+\;  = \; \Theta ( n (n - 1) / 2)
+\;  = \; \Theta ( n^{2} ).
+\end{align*}
+
+Most of these steps are very simple manipulations, and the key step is
+the applications of the arithmetic series (which you should have down
+pat, along with the geometric one). 
+
+So we have seen that Bubble Sort takes time $\Theta(n^2)$, i.e., it is
+a quadratic algorithm. Notice that it also takes a quadratic number of
+swaps, not just comparisons. Sometimes, people consider comparisons a
+little cheaper and distinguish carefully between the two.
+In practice, Bubble Sort is actually quite bad, and it is the worst of
+the three quadratic algorithms we will see in this class.
+In fact, as you saw from the link that was posted on the course
+website, even President Obama knows not to use Bubble Sort for large
+arrays.
+
+\section{Selection Sort}
+
+The basic idea of Selection Sort is to find the smallest element, and
+bring it once and for all to its correct position (first place in the
+array), then continue with the second position and second smallest
+element, and continue this way until all elements are in their correct
+position.\footnote{The textbook describes this algorithm as finding
+  the largest element, then putting it in the last position, and
+  continuing this way. Obviously, it is pretty easy to trade off
+  between those two.}
+So we can write Selection Sort as follows:
+
+\begin{verbatim}
+for (int i = 0; i < n - 1; i++) {
+    int smallestNumIndex = i;
+    for (j = i + 1; j < n; j++) {
+        if (a[j] < a[smallestNumIndex]) { smallestNumIndex = j; }
+    }
+    a.swap(i, smallestNumIndex);
+}
+\end{verbatim}
+
+Selection Sort as implemented is not stable.
+Suppose that we have the number 5 occuring in positions 1 and 2, and
+the number 3 in position 3. Then, we will swap positions 1 and 3, so
+that the order of the two elements numbered 5 is now reversed.
+To make Selection Sort stable, the easiest way would be to use a 
+\code{List<T>} data structure, and replace
+\code{a.swap(i, smallestNumIndex)} with
+\begin{verbatim}
+T temp = a[smallestNumIndex];
+a.remove (smallestNumIndex);
+a.insert (i, temp);
+\end{verbatim}
+Notice that this will now result in $\Theta(n^2)$ write steps total
+(as the \code{insert} and \code{remove} operations of lists take
+$\Theta(n)$ writes to shift the array), so it will slow down the
+algorithm.
+
+Again, we would like to think about the loop invariant we would need
+to prove this algorithm correct. Here, it looks similar to Bubble
+Sort, only for the beginning of the array instead of the end.
+After any number $k$ of iterations, the following holds:
+\begin{itemize}
+\item The first $k$ positions of the array contain the smallest $k$
+  elements, and are sorted.
+  (The last $n-k$ positions are not necessarily sorted yet.) 
+\item The entire array still contains the same elements as at the beginning.
+\end{itemize}
+Again, we would use induction on $k$ to prove this claim.
+Pictorially, we can represent it as in Figure~\ref{fig:selectionsort}:
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.05cm,arrowsize=0.1 3}
+\pspicture(0,-10)(110,110)
+
+\psline{->}(0,0)(110,0)
+\psline{->}(0,0)(0,110)
+\psline{-}(15,5)(15,-5)
+\rput(15,-10){$k$}
+
+\psdots*[dotstyle=*](0,0)(1,1)(2,2)(3,3)(4,4)(5,5)(6,6)(7,7)(8,8)(9,9)(10,10)(11,11)(12,12)(13,13)(14,14)(15,37)(16,26)(17,88)(18,87)(19,21)(20,35)(21,70)(22,38)(23,16)(24,46)(25,19)(26,32)(27,84)(28,72)(29,50)(30,73)(31,31)(32,78)(33,47)(34,86)(35,67)(36,38)(37,99)(38,95)(39,60)(40,70)(41,43)(42,57)(43,99)(44,83)(45,82)(46,91)(47,70)(48,55)(49,22)(50,98)(51,61)(52,83)(53,82)(54,93)(55,38)(56,78)(57,93)(58,60)(59,18)(60,63)(61,50)(62,26)(63,66)(64,97)(65,85)(66,19)(67,92)(68,18)(69,33)(70,93)(71,60)(72,64)(73,15)(74,33)(75,67)(76,30)(77,62)(78,32)(79,80)(80,55)(81,85)(82,85)(83,36)(84,92)(85,20)(86,30)(87,37)(88,49)(89,16)(90,23)(91,41)(92,34)(93,75)(94,80)(95,70)(96,17)(97,49)(98,76)(99,51)
+
+\endpspicture
+\end{center}
+\caption{A pictorial representation of the loop invariant of Selection
+  Sort. \label{fig:selectionsort}}
+\end{figure}
+
+In the analysis, the innermost part takes time $\Theta(1)$, and the
+inner loop therefore has running time $\Theta(n-i)$. 
+So the total running time is $\sum_{i=0}^{n-2} \Theta(n-i)$.
+In order to evaluate this sum, the bets way is to look a but by hand
+what happens for different values of $i$. For $i=0$, we have 
+$n-i=n$. For $i=1$, we get $n-i=n-1$, and so on.
+Finally, for $i=n-3$, we have $n-i = 3$, and for $i=n-2$, we get
+$n-i=2$.
+So the sum is the same as $\sum_{i=2}^n \Theta(i)$. 
+Now, we can add the $i=1$ term (because it only adds $\Theta(1)$ to
+the sum), and get that the sum is $\Theta(\sum_{i=1}^n i) =
+\Theta(n^2)$ (as we did for Bubble Sort).
+In practice, Selection Sort is a little better than Bubbble Sort,
+since it only has $O(n)$ swaps (though still $\Theta(n^2)$
+comparisons).
+
+\section{Insertion Sort}
+
+When we analyzed Selection Sort, and thought about the loop invariant,
+it was that after $k$ iterations:
+\begin{itemize}
+\item The first $k$ positions of the array contain the smallest $k$
+  elements, and are sorted.
+  (The last $n-k$ positions are not necessarily sorted yet.) 
+\item The entire array still contains the same elements as at the beginning.
+\end{itemize}
+Let's think about what algorithm or invariant we would get if instead
+we had just ``the first $k$ position are sorted,'' without thinking
+about the fact that they also contain the smallest $k$ elements.
+This would give us the following visualization:
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.05cm,arrowsize=0.1 3}
+\pspicture(0,-10)(110,110)
+
+\psline{->}(0,0)(110,0)
+\psline{->}(0,0)(0,110)
+\psline{-}(25,5)(25,-5)
+\rput(25,-10){$k$}
+
+\psdots*[dotstyle=*](0,2)(1,4)(2,8)(3,14)(4,20)(5,21)(6,27)(7,29)(8,36)(9,36)(10,40)(11,44)(12,50)(13,56)(14,57)(15,61)(16,66)(17,71)(18,72)(19,76)(20,83)(21,87)(22,92)(23,93)(24,100)(25,30)(26,55)(27,32)(28,93)(29,74)(30,95)(31,10)(32,73)(33,55)(34,30)(35,95)(36,45)(37,5)(38,94)(39,48)(40,73)(41,53)(42,74)(43,60)(44,41)(45,56)(46,44)(47,43)(48,40)(49,37)(50,79)(51,35)(52,49)(53,29)(54,10)(55,7)(56,17)(57,55)(58,87)(59,73)(60,26)(61,45)(62,12)(63,72)(64,95)(65,53)(66,53)(67,83)(68,17)(69,55)(70,17)(71,76)(72,77)(73,76)(74,99)(75,54)(76,28)(77,2)(78,61)(79,55)(80,70)(81,16)(82,94)(83,81)(84,30)(85,80)(86,4)(87,86)(88,59)(89,7)(90,54)(91,79)(92,2)(93,65)(94,53)(95,32)(96,36)(97,32)(98,63)(99,17)
+
+\endpspicture
+\end{center}
+\caption{A pictorial representation of the loop invariant of Insertion
+  Sort. \label{fig:insertionsort}}
+\end{figure}
+
+Notice the difference to the visualization of Selection Sort and
+Bubble Sort. Here, the sorted area is sorted internally, but may
+contain elements that are larger than some elements in the unsorted
+area.
+This is the loop invariant for an algorithm called
+\todef{Insertion Sort}. Again, after $k$ iterations:
+\begin{itemize}
+\item The first $k$ positions of the array are sorted.
+\item The entire array still contains the same elements as at the beginning.
+\end{itemize}
+
+The Insertion Sort Algorithm works as follows: for each
+of the positions in order, pretend that you just ``discovered''
+element $a[i]$, and put it in its correct position in the array
+between positions $0$ and $i$. Keep doing that until the entire array
+is sorted. In fact, this is how many people will sort a hand of cards,
+picking them up one by one, and inserting them into the correct
+position with the current cards in hand. In code, it looks as follows:
+
+\begin{verbatim}
+for (int i = 1; i < n; i++) {
+    int j = i;
+    while (j > 0 && a[j] < a[j-1])
+         { 
+            a.swap(j, j-1);
+            j --;
+         }   
+}
+\end{verbatim}
+
+This algorithm is also stable. The reason is that it never swaps equal
+elements. 
+
+Next, let's analyze the running time of Insertion Sort. 
+The commands inside the \code{while} loop take time $\Theta(1)$, so
+the inner \code{while} loop, which runs from $i$ until $0$, takes time
+$\Theta(i)$. Therefore, the entire algorithm takes time
+$\sum_{i=1}^{n-1} \Theta(i) = \Theta(n^2)$, a calculation which by now
+should be second nature.
+
+While Insertion Sort is thus also a quadratic algorithm, it is
+actually not so bad in practice, and is considered the fastest sorting
+algorithm for $n \leq 10$. In fact, implementations of the faster
+recursive algorithms we see next often switch to Insertion Sort for
+smaller array sizes.
+
+The implementation can also be optimized a bit. As you see, we have a
+lot of \code{swap} operations in the inner loop. One can do a little
+better by storing $a[i]$ in a separate variable $t$, then just copying
+each of $a[j-1]$ to $a[j]$, and finally copying $t$ into its correct
+position. This replaces each \code{swap} by just one assignment, which
+should speed up the loop by about a factor of 3.
+
+\section{Merge Sort}
+
+Next, we learn about two classic $O(n \log n)$ algorithms: Merge Sort
+and Quick Sort. Both use recursion and the Divide\&{}Conquer paradigm.
+Both algorithms are quite fast, both theoretically and in practice,
+and they also illustrate some very central algorithmic ideas. 
+
+In general, the Divide\&{}Conquer paradigm for algorithm design
+considers algorithms in three phases:
+\begin{description}
+\item{Divide}: Partition (split up) the input into one or more smaller
+  inputs. These inputs may overlap, but in the simpler examples, they
+  usually don't.
+\item{Recurse}: Solve the problem on each of the smaller sets
+  recursively.
+\item{Combine}: Combine these solutions into one to solve the original
+  problem. This is also called the ``Conquer'' step.
+\end{description}
+
+We have already seen one very simple example of Divide\&{}Conquer
+earlier, namely, Binary Search. There, the Divide step consisted of
+comparing the searched-for element $x$ to the median element of the
+array $a$ (i.e., the element in position $n/2$). This divided the
+array into one smaller input, namely the half of the array in which
+$x$ was now known to lie (unless we were lucky and found the element
+already). The Recurse step was the recursive call for just that one
+half, and the Combine step was trivial: it just returned the result of
+the Recurse step without any further work.
+
+The Merge Sort algorithm fits into the Divide\&{}Conquer paradigm as
+follows:
+\begin{description}
+\item{Divide}: Do nothing much, just divide the array into two
+  (roughly) equal-sized halves.
+\item{Recurse}: Recursively sort the two halves.
+\item{Combine}: This is where all the work gets done: the two sorted
+  halves get merged in one linear-time pass.
+\end{description}
+
+More formally, the code looks as follows:
+\begin{figure}[htb]
+\begin{verbatim}
+void MergeSort(T a[], int l, int r)
+{
+    if (l<r) { // otherwise, just one element, which is sorted
+        int m = floor((l+r)/2);
+        MergeSort(a, l, m);
+        MergeSort(a, m+1, r);
+        Merge(a, l, r, m); // this is a separate function given below
+    }
+}
+\end{verbatim}
+\caption{The MergeSort Algorithm \label{alg:sorting:mergesort}}
+\end{figure}
+
+The \code{Merge} function is implemented as follows:
+\begin{figure}[htb]
+\begin{verbatim}
+void Merge (T a[], int l, int r, int m)
+{
+  T temp[r+1-l];
+  // trace through the two subarrays, copying into a temporary one
+  int i = l, j = m+1, k = 0;
+  while (i <= m || j <= r)  // at least one subarray contains another element
+       {
+         if (i <= m && (j > r || a[i] <= a[j]))  
+            // next smallest element in left subarray
+            { temp[k] = a[i]; i ++; k ++; }
+         else { temp[k] = a[j]; j ++; k ++; }
+            // next smallest element in right subarray
+       }
+  // now copy over the merged array into the original
+  for (k = 0; k < r+1-l; k ++)
+      a[k+l] = temp[k];
+}
+\end{verbatim}
+\caption{The Merge Subroutine \label{alg:sorting:merge}}
+\end{figure}
+
+Like for many recursive algorithm, the invariant for
+\code{MergeSort} is actually just the correctness condition of the
+algorithm, and is expressed as follows:
+
+\begin{quote}
+After \code{MergeSort(a,l,r)} executes, \code{a} is sorted between
+\code{l} and \code{r}, and contains the same elements as the original array. 
+\end{quote}
+
+The most interesting visualization explaining the progress of the
+algorithm is now drawing the array right after the two recursive
+calls, but before the \code{Merge} step.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.05cm,arrowsize=0.1 3}
+\pspicture(0,-10)(110,110)
+
+\psline{->}(0,0)(110,0)
+\psline{->}(0,0)(0,110)
+\psline{-}(50,5)(50,-5)
+\rput(50,-10){$m$}
+
+\psdots*[dotstyle=*](0,0)(1,2)(2,5)(3,5)(4,7)(5,8)(6,9)(7,13)(8,16)(9,17)(10,19)(11,20)(12,20)(13,23)(14,26)(15,30)(16,30)(17,32)(18,35)(19,35)(20,39)(21,43)(22,43)(23,47)(24,47)(25,50)(26,51)(27,52)(28,56)(29,57)(30,59)(31,61)(32,63)(33,67)(34,67)(35,68)(36,71)(37,71)(38,74)(39,75)(40,77)(41,79)(42,82)(43,84)(44,86)(45,90)(46,93)(47,93)(48,97)(49,99)(50,0)(51,2)(52,4)(53,4)(54,7)(55,7)(56,10)(57,11)(58,12)(59,14)(60,16)(61,18)(62,21)(63,21)(64,25)(65,25)(66,25)(67,26)(68,27)(69,30)(70,34)(71,37)(72,40)(73,40)(74,44)(75,47)(76,51)(77,54)(78,55)(79,57)(80,58)(81,62)(82,66)(83,69)(84,69)(85,73)(86,73)(87,75)(88,78)(89,79)(90,82)(91,85)(92,89)(93,89)(94,93)(95,97)(96,100)(97,104)(98,107)(99,108)
+
+\endpspicture
+\end{center}
+\caption{A pictorial representation of the state of Merge Sort before
+  the actual \code{Merge} call. \label{fig:mergesort}}
+\end{figure}
+
+Of course, since all the actual work happens inside the \code{Merge}
+function (the rest is just recursive calls, and no actual
+computation), presumably all the hard work in proving the
+invariant would come from analyzing the \code{Merge} function.
+We capture the way it works with the following lemma.\footnote{A lemma
+  is a theorem that you don't really prove for its own sake, but
+  mostly so that it helps you prove a bigger goal.}
+
+\begin{lemma}
+If \code{Merge(a,l,r,m)} is called such that \code{a} is sorted between
+\code{l} and \code{m}, and separately between \code{m+1} and \code{r},
+then after \code{Merge} runs, the array is sorted between \code{l} and
+\code{r} and contains the same elements. 
+\end{lemma}
+
+To prove this lemma, since \code{Merge} uses mostly one loop, we would
+have to phrase a careful loop invariant, and then prove that by
+induction on a suitable loop counter. 
+Here, that would be $i+j$ in the \code{Merge} function. A detailed
+proof would be somewhat tedious, though not really hard.
+
+Once we have proved the lemma, the correctness proof for
+Merge Sort is actually quite easy. We won't do it here in class,
+but it really just consists of plugging in the induction hypothesis and
+the lemma.
+
+\subsection{Running Time of Merge Sort}
+If we look at the Merge Sort algorithm more closely,
+we notice that the running time on an array of size $n$ accrues as
+follows:
+\begin{enumerate}
+\item First, we spend time $O(1)$ for computing $m$. 
+\item Then, we make two recursive calls to Merge Sort, with arrays of 
+sizes $\Floor{(n-1)/2}$ and $\Ceiling{(n-1)/2}$.
+\item Finally, we call \code{Merge}. \code{Merge} goes through the two
+  subarrays with one loop, always increasing one of $i$ and $j$. 
+  Thus, it takes time $\Theta(n)$.
+\end{enumerate}
+
+Let's use $T(n)$ to denote the worst-case running time of Merge Sort
+on an array of $n$. 
+We don't know yet what $T(n)$ is --- after all, that's what
+we're trying to work out right now. 
+But we do know that it must satisfy the following recurrence relation:
+\begin{eqnarray*}
+T(n) & = & T(\Floor{(n-1)/2}) + T(\Ceiling{(n-1)/2}) + \Theta(n),\\
+T(1) & = & \Theta(1).\\
+T(0) & = & \Theta(1).
+\end{eqnarray*}
+The last two cases are just the base case where the recursion bottoms
+out. The first equation is obtained as follows: We worked out that the
+running time for an array of size $n$ is the time for \code{Merge}
+(and the computation of $m$), which is $\Theta(n)$, plus the time for
+the two recursive calls. We don't know how long those two take yet,
+but we know that they must be the function $T$ applied to the
+respective array sizes. 
+
+Having worked out the recurrence, with a bit of experience, we
+actually realize that in this type of recurrence, it doesn't really
+matter whether one rounds up or down, and whether it is $(n-1)/2$ or
+$n/2$. If you are worried about this, you can work out the details and
+verify them. There are certainly cases where this would matter, but
+until you start analyzing pretty intricate algorithms and data
+structures (at which point you'll have learned the material so well
+that you don't need these lecture notes), you can always disregard, for
+the purpose of analysis, such small details.
+So we get a simpler recurrence:
+\begin{eqnarray*}
+T(n) & = & 2T(n/2) + \Theta(n),\\
+T(1) & = & \Theta(1).
+\end{eqnarray*}
+
+This type of recurrence pops up very frequently in the analysis of
+Divide\&{}Conquer algorithms. The more general form is
+$T(n) = a \cdot T(n/b) + f(n)$, for some constant numbers $a$ and $b$,
+and some function $f$. You will learn in CSCI270 how to solve this
+more general case, including by a theorem called the Master Theorem
+(which really isn't very hard, the name notwithstanding).
+But it's actually not too hard to do by hand. 
+The typical way to solve such recurrences by hand is to draw a
+recursion tree, work out the amount of work on each level and the
+number of levels, and then add them up. This gives you a conjecture
+for the formula for $T(n)$. 
+This conjecture can then be verified using (strong) induction on $n$. 
+After a bit of experience, one may omit the induction proof (since
+it's always very similar), but for now, verifying by induction is
+quite important.
+
+The recursion tree is given in Figure~\ref{fig:recursiontree}:
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,arrowsize=0.1 3}
+\pspicture(2,0)(18,10)
+
+\psframe(0,9)(15,8)
+\rput(7.5,8.5){$n$}
+
+\rput[l](15.5,8.5){Total: $\Theta(n)$}
+
+\psframe(0,7)(7,6)
+\rput(3.5,6.5){$n/2$}
+\psframe(8,7)(15,6)
+\rput(11.5,6.5){$n/2$}
+
+\rput[l](15.5,6.5){Total: $2 \cdot \Theta(n/2) = \Theta(n)$}
+
+\psframe(0,5)(3,4)
+\rput(1.5,4.5){$n/4$}
+\psframe(4,5)(7,4)
+\rput(5.5,4.5){$n/4$}
+\psframe(8,5)(11,4)
+\rput(9.5,4.5){$n/4$}
+\psframe(12,5)(15,4)
+\rput(13.5,4.5){$n/4$}
+
+\rput[l](15.5,4.5){Total: $4 \cdot \Theta(n/4) = \Theta(n)$}
+
+\rput[l](15.5,2.5){Total: $2^k \cdot \Theta(n/2^k) = \Theta(n)$}
+
+\psframe(0,1)(0.7,0)
+\rput(0.35,0.5){$1$}
+\psframe(1,1)(1.7,0)
+\rput(1.35,0.5){$1$}
+\psframe(2,1)(2.7,0)
+\rput(2.35,0.5){$1$}
+\psdots*[dotstyle=*](5,0.5)(5.5,0.5)(6,0.5)(6.5,0.5)
+\psframe(14.3,1)(15,0)
+\rput(14.65,0.5){$1$}
+
+\psdots*[dotstyle=*](7,2.5)(7.5,2.5)(8,2.5)(8.5,2.5)
+\rput[l](15.5,0.5){Total: $n \cdot \Theta(1) = \Theta(n)$}
+
+\psline{->}(3.5,8)(3.5,7)
+\psline{->}(11.5,8)(11.5,7)
+
+\psline{->}(1.5,6)(1.5,5)
+\psline{->}(5.5,6)(5.5,5)
+\psline{->}(9.5,6)(9.5,5)
+\psline{->}(13.5,6)(13.5,5)
+
+\psline{->}(0.75,4)(0.75,3)
+\psline{->}(2.25,4)(2.25,3)
+\psline{->}(4.75,4)(4.75,3)
+\psline{->}(6.25,4)(6.25,3)
+\psline{->}(8.75,4)(8.75,3)
+\psline{->}(10.25,4)(10.25,3)
+\psline{->}(12.75,4)(12.75,3)
+\psline{->}(14.25,4)(14.25,3)
+
+\psline{|-|}(-1,0)(-1,9)
+\rput{90}(-1.5,5){$\log_2(n)$ layers}
+%\rput(-2,4.5){layers}
+
+\endpspicture
+\end{center}
+\caption{A recursion tree for Merge Sort. The numbers in the boxes are
+  the array sizes, and we know that the work for \code{Merge} for an
+  array of size $s$ is $\Theta(s)$. In layer $k$, there are $2^k$
+  subarrays to process in the separate recursive calls, and each of
+  them has size $n/2^k$. \label{fig:recursiontree}}
+\end{figure}
+
+Each level corresponds to one level of recursion. 
+The top (root, level 0) is the call on an array of size $n$.
+This causes two calls with arrays of size $n/2$, at the next lower
+level (level 1).
+Each of those causes two calls with arrays of size $n/4$, for a total
+of $4$ such calls at level 2.
+More generally, at level $k$, we have $2^k$ recursive calls, each on
+an array of size $n/2^k$. 
+This bottoms out at the level where the array sizes are 1.
+
+Now, if we look at the total work done by the calls to \code{Merge} at
+level $k$, we see that we call the function $2^k$ times, on arrays of
+size $n/2^k$ each. Since the running time for \code{Merge} is linear
+in the array size, we get $2^k \Theta(n/2^k) = \Theta(n)$. Thus, the
+total work at each level is $\Theta(n)$.
+
+Next, we calculate the number of levels. Since the array size halves
+with each extra level, and it starts with $n$ and finishes with 1, the
+number of levels is $\log_2(n)$. 
+(Technically, it is $\Ceiling{\log_2(n)}$, but such details don't
+affect the running time analysis.)
+So the total work, summing up over all levels, is 
+$\Theta(n \log_2(n))$. 
+Remember that all logarithms are the same up to constant factors (base
+conversion), so we can just write $\Theta(n \log n)$, and leave the
+base unspecified.
+
+So now, we have a pretty well-founded conjecture that
+$T(n) = \Theta(n \log n)$. 
+But we want to prove this conjecture very formally. 
+Whenever we want to formally analyze the running time of a recursive
+algorithm, the proof technique of choice is induction, because to
+prove something for bigger arrays, we'll want to rely on the same
+result for smaller arrays.
+This requires us to write a formal induction hypothesis and
+statement. 
+First, to avoid mistakes we might make with $\Theta()$ notation (there
+are some subtleties when combining recursion and $\Theta()$), let's
+pretend that the recurrence is actually:
+\begin{eqnarray*}
+T(n) & = & 2T(n/2) + n,\\
+T(1) & = & 1,
+\end{eqnarray*}
+getting rid of all $\Theta()$ notation.
+Then, we also want to make the precise form of the conjecture
+concrete, by saying that 
+\begin{eqnarray*}
+T(n) & = & n (1 + \log_2(n)).
+\end{eqnarray*}
+You may wonder where the ``1+'' came from suddenly. 
+When looking at the base case $n=1$, we notice that $T(1)=1$ is what
+we want, but if we just had $n \log(n)$, because $\log(1) = 0$
+(regardless of base), we would have $0$. Adding ``1+'' is a bit of a
+trial-and-error result.
+
+We will now prove the conjecture by (strong) induction on $n$.
+For the base case $n=1$, we get that $T(1) = 1$ by the recurrence, and
+our formula gives us $1 \cdot (1 + \log_2(1)) = 1 \cdot (1+0) = 1$,
+so the base case worked.
+
+Next, we state the induction hypothesis. Because we are doing
+\emph{strong} induction, we get to assume that \emph{for all} 
+$k < n$, the statement $T(k) = k (1 + \log_2(k))$ is true. 
+We want to prove that $T(n) = n (1 + \log_2(n))$. 
+Notice here the difference between normal induction and strong
+induction. In normal induction, we would only get to assume that the
+hypothesis holds for $k=n-1$, whereas using strong induction, we can
+assume it for \emph{all} $k < n$, including $k=n-1$. 
+This is useful when, as here, the recurrence for $n$ is based on
+values for parameters other than $n-1$; in our case, this is $n/2$.
+
+To actually prove this, we begin by using the only thing we know for
+sure about $T(n)$, namely that
+\begin{eqnarray*}
+T(n) & = & 2 T(n/2) + n.
+\end{eqnarray*}
+Now, we need to deal with those $T(n/2)$ terms. 
+Here, we apply the induction hypothesis with $k=n/2$. 
+We are allowed to do so, because $n \geq 2$ implies that $n/2 < n$.
+Then, we get that
+\[
+T(n) \; = \; 2 T(n/2) + n
+\; \stackrel{I.H.}{=} \; 2 \frac{n}{2} (1+\log_2(n/2)) + n
+\; = \; n (1 + \log_2(n) - 1) + n
+\; = \; n (1 + \log_2(n)).
+\]
+This is exactly what we wanted to show, so the induction step is
+finished, and we have completed the induction proof.
+
+\section{Quick Sort}
+Merge Sort was our first illustration of a Divide\&Conquer sorting
+algorithm. The other classic representative is Quick Sort. 
+Merge Sort does practically no work in the Divide step --- it only
+calculates $m$, the middle position of the array.
+Instead, the Combine step is where all the work happens.
+Quick Sort is at the other extreme: it does all its hard work in the
+Divide step, then calls itself recursively, and literally does
+nothing for the Combine step.
+
+The Divide step in Quick Sort makes sure to move all of the smaller
+numbers to the left side of the array (but not sort them there), all
+of the larger numbers to the right side of the array (again, not
+sorted further), and then call itself recursively on the two sides.
+This division is accomplished with a \todef{pivot element} \code{p}.
+The left side will contain only elements that are \emph{at most} as
+large as \code{p}, while the right side contains only elements
+\emph{at least} as large as \code{p}.
+(Depending on the implementation, elements equal to \code{p} may end
+up on either side, or the implementation may choose to put them all in
+one side.)
+Once we do this Divide step, we know that no elements of the left
+will ever need to end up on the right side, or vice versa.
+Thus, after we recursively sort the two sides, the entire array will
+be sorted.
+
+Note that the left and right sides of the array will not necessarily
+be the same size, not even approximately. In Merge Sort, we carefully
+ensured to divide the array into two equal halves.
+In Quick Sort, we may also end up with two halves, but that would
+require choosing the median of the array as the pivot.
+More formally, the Quick Sort algorithm looks as follows. 
+
+\begin{verbatim}
+void QuickSort (T a[], int l, int r) {
+    if (l < r) {
+        int m = partition(a, l, r);
+        QuickSort(a, l, m-1);
+        QuickSort(a, m+1, r);
+    }
+}
+\end{verbatim}
+
+As you can see, basically all the work must be done in the
+\code{partition} function, which is as follows:
+
+\begin{verbatim}
+int partition (T a[], int l, int r) {
+    int i = l; // i will mark the position such that everything strictly to 
+               // the left of i is less than or equal the pivot.
+    T p = a[r];
+    for (int j = l; j < r; j++) {
+        if (a[j] <= p) {  // found an element that goes to the left
+            a.swap(i, j); // put it on the left
+            i++;
+        }
+    }
+    a.swap (i, r); // put the pivot in its place
+    return i;
+}
+\end{verbatim}
+
+The \code{partition} function runs one loop through the array, and
+moves to the left side any element that is smaller than the pivot,
+keeping track of the boundary (\code{i}) between elements that are
+smaller than the pivot, and elements that may be (or are) larger.
+This is a perfectly adequate implementation of the \code{partition}
+function, but it uses about twice as many swaps as necessary.
+(In big-$O$ notation, that does not matter, of course, but in
+practice, such a factor of 2 can be very important.)
+The slightly more clever implementation is to have two counters
+\code{i, j}, one starting at the left, the other at the right. 
+Whenever \code{a[i] > p} and \code{a[j] < p}, the two elements at
+\code{i} and \code{j} are swapped. Otherwise, \code{i} is incremented,
+\code{j} is decremented, or both. When the counters cross each other,
+the function is done. One has to be a little careful with the indices
+\code{i} such that \code{a[i] = p}, which is why in class, we
+present the simpler and slower version. But it's not too hard to
+work out.
+
+Again, because Quick Sort is a recursive algorithm, the correctness
+statement is simply the overall correctness condition, and we don't
+need a loop invariant:
+
+\begin{quote}
+After \code{QuickSort(a,l,r)} executes, \code{a} is sorted between
+\code{l} and \code{r}, and contains the same elements as the original array. 
+\end{quote}
+
+To prove this condition, we would again use induction over the array
+size $n=r+1-l$, just as with Merge Sort. Also, as with Merge Sort,
+since all the actual work is done by a ``helper function'' --- here,
+the \code{partition} function --- the correctness proof would mostly
+rely on a lemma about the behavior of that helper function.
+
+\begin{lemma}
+When \code{partition(a,l,r)} returns the value \code{m}, the array
+\code{a} still contains the same elements, and has the following
+property: (1) Each position $l \leq i < m$ satisfies
+$a[i] \leq a[m]$, and (2) Each position $m < i \leq r$ satisfies
+$a[i] \geq a[m]$.
+\end{lemma}
+
+We can visualize this lemma as in Figure~\ref{fig:quicksort}, covering
+the main insight of the Quick Sort algorithm visually (like we did
+with the other sorting algorithms):
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.05cm,arrowsize=0.1 3}
+\pspicture(0,-10)(110,110)
+
+\psline{->}(0,0)(110,0)
+\psline{->}(0,0)(0,110)
+\psline{-}(35,5)(35,-5)
+\rput(35,-10){$m$}
+
+\psdots*[dotstyle=*](0,21)(1,4)(2,7)(3,7)(4,5)(5,21)(6,12)(7,32)(8,32)(9,3)(10,6)(11,34)(12,14)(13,22)(14,27)(15,4)(16,23)(17,31)(18,33)(19,25)(20,26)(21,14)(22,21)(23,31)(24,9)(25,33)(26,8)(27,17)(28,29)(29,32)(30,6)(31,13)(32,15)(33,29)(34,9)(35,99)(36,60)(37,63)(38,63)(39,74)(40,67)(41,92)(42,52)(43,61)(44,44)(45,42)(46,58)(47,49)(48,93)(49,38)(50,82)(51,49)(52,72)(53,68)(54,61)(55,81)(56,75)(57,87)(58,68)(59,43)(60,78)(61,73)(62,45)(63,74)(64,39)(65,93)(66,41)(67,89)(68,96)(69,41)(70,35)(71,42)(72,45)(73,94)(74,65)(75,66)(76,56)(77,54)(78,36)(79,95)(80,56)(81,73)(82,88)(83,70)(84,78)(85,41)(86,70)(87,74)(88,97)(89,52)(90,51)(91,72)(92,42)(93,62)(94,69)(95,36)(96,72)(97,84)(98,90)(99,41)
+
+\endpspicture
+\end{center}
+\caption{A pictorial representation of the state of Quick Sort after
+  calling \code{partition}. \label{fig:quicksort}}
+\end{figure}
+
+To prove the lemma, we would again need induction.
+Since \code{partition} consists mostly of a loop, we would need a loop
+invariant, capturing formally the outline of how \code{partition}
+works. We won't do that here, but it isn't too hard.
+Once we have the lemma, the correctness proof for Quick Sort is very
+straightforward. It simply uses strong induction on the array size,
+and applies the lemma and the induction hypothesis. This is one you
+should be able to work out pretty easily on your own.
+
+\subsection{Running Time}
+To analyze the running time of Quick Sort, we use the same approach as
+we did for Merge Sort (and is common for many recursive algorithms,
+unless they are completely obvious).
+We let $T(n)$ represent the worst-case running time of the Quick Sort
+algorithm on an array of size $n$. 
+To get a hold of $T(n)$, we look at the algorithm line by line.  
+The call to \code{partition} takes time $\Theta(n)$, because it runs
+one linear scan through the array, plus some constant time. 
+Then, we have two recursive calls to Quick Sort.
+We let $k = m-1-l$ denote the size of the left subarray.
+Then, the first recursive call takes time $T(k)$, because it is a
+call on an array of size $k$. 
+The second recursive call will take time $T(n-1-k)$, because the size
+of the right subarray is $n-1-k$. 
+Therefore, the total running time of Quick Sort satisfies the
+recurrence
+\begin{eqnarray*}
+T(n) & = & \Theta(n) + T(k) + T(n-1-k),\\
+T(1)  & = & \Theta(1).
+\end{eqnarray*}
+This is quite a bit messier-looking than the recurrence for Merge
+Sort, and if we know nothing about $k$, we cannot really solve this
+recurrence. But in order to get a feel for it, we can play with it
+a bit, and explore different possible values of $k$.
+
+\begin{enumerate}
+\item For $k = \frac{n}{2}$, the recurrence becomes much simpler:
+$T(n) = \Theta(n) + T(n/2) + T(n/2-1)$, which --- as we discussed in
+the context of Merge Sort --- we can simplify to
+$T(n) = \Theta(n) + 2 T(n/2)$.
+That's exactly the recurrence we have already solved for Merge Sort,
+and thus the running time of Quick Sort would be 
+$\Theta(n \log n)$.
+\item At the other extreme is $k = 0$ (or, similarly, $k=n-1$).
+Then, we get only that $T(n) = \Theta(n) + T(0) + T(n-1)$, and since
+$T(0) = \Theta(1)$, this recurrence becomes $T(n) = \Theta(n) + T(n-1)$.
+This recurrence unrolls as 
+$T(n) = \Theta(n) + \Theta(n-1) + \Theta(n-2) + \ldots + \Theta(1)$,
+so $T(n) = \Theta(\sum_{i=1}^n i) = \Theta(n^2)$.
+\end{enumerate}
+The running time for $k=0$ or $k=n-1$ is thus just as bad as for the
+simple algorithms, and in fact, for $k=0$, Quick Sort is essentially
+the same as Selection Sort.
+Of course, this quadratic running time would not be a problem if only
+the cases $k=0$ and $k=n-1$ did not appear in practice. 
+But in fact, they do: with the pivot choice we implemented, these
+cases will happen whenever the array is already sorted (increasingly
+or decreasingly), which should actually be an easy case. They will
+also happen if the array is nearly sorted. This is quite likely in
+practice, for instance, because the array may have been sorted, and
+then just messed up a little with some new insertions.
+
+As we can see, the choice of pivot is extremely important for the
+performance of Quick Sort. Our favorite pivot would be the median,
+since it ensures that $k = \frac{n}{2}$, giving us the best solution
+$T(n) = \Theta(n \log_2 n)$. 
+There are in fact linear algorithms for finding the median; they are
+not particularly difficult (in particular, the randomized one is quite
+easy; the deterministic algorithm is a bit more clever), but belong
+more in an algorithms class.
+
+Of course, we don't have to find exactly the median.
+As long as there exists some \emph{constant} $\alpha > 0$
+with $\alpha n \leq k \leq (1- \alpha) n$ for all recursive calls, we
+will get that $T(n) = \Theta (n \log n)$. 
+However, the constant hidden inside the $\Theta$ gets worse as
+$\alpha \to 0$, because the array sizes in Quick Sort become more 
+and more imbalanced. 
+
+So we would be quite happy if somehow, we could always pick a pivot
+$p$ such that at least 25\% of the array's entries are less than $p$
+and at least 25\% are more than $p$. Notice that half of all entries
+in the array would actually satisfy this, namely, the entries which
+(in the sorted version) sit in array positions $n/4 \ldots 3n/4$.
+Unfortunately, right now, we don't really know how to find such a
+pivot, either. (It can be done with basically the same idea as finding
+a median.)
+
+But one thing we can do is pick a \emph{random} element of the array
+as a pivot. That will not \emph{always} guarantee that the pivot
+satisfies this nice 25\% property, but it happens on average half the
+time. So, half the time, the subarray sizes shrink at least by 25\%,
+which is enough to ensure that we only have $O(\log n)$ levels of
+recursive calls, and thus running time $O(n \log n)$.
+The analysis of \todef{Randomized Quick Sort} is not particularly
+difficult, but would take us about a lecture, so we'll skip it here
+--- you will likely see it in CSCI270. But one can show that the
+expected running time $E[T(n)] = \Theta(n \log n)$. Notice that when
+the algorithm makes random choices, like Randomized Quick Sort does,
+the running time becomes a random variable. One can show that not only
+in expectation is it $\Theta(n \log n)$, but in fact, this happens
+most of the time.
+
+In practice, Randomized Quick Sort performs quite well. Another way to
+achieve the same result is to scramble the array truly randomly first,
+and then run the default Quick Sort algorithm from above on the
+scrambled array. That is mathematically equivalent.
+
+As an aside, here is how you randomly scramble an array:
+\begin{verbatim}
+for (int i = n-1; i > 0; i --)
+     a.swap (i, rand()%(i+1));
+\end{verbatim}
+This ensures that each permutation of the array is equally likely in
+the end. Don't try to scramble it by repeatedly swapping random pairs
+of elements, like the following:
+\begin{verbatim}
+for (int i = 0; i < MAXSWAPS; i ++)
+    a.swap (rand()%n, rand()%n);
+\end{verbatim}
+This does eventually give you a truly random array, but it takes way
+more swaps than you would normally run. This is actually an
+interesting area of mathematics (Analysis of Mixing Times of Markov
+Chains and Random Walks, specifically for card shuffling), and the
+main result is that you need $\mbox{MAXSWAPS} = \Omega(n \log n)$
+pairwise swaps before the array actually looks random.

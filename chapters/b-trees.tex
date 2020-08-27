@@ -1,0 +1,1072 @@
+\newcommand{\ProblemTree}{%
+\pstree{\Tcircle[fillstyle=solid,fillcolor=black]{\phantom{5}}}
+	{
+   	   \Ttri{$T$}
+	}
+}
+
+In the next few chapters, we will learn of the two typical ways of
+implementing maps: Search Trees and Hashtables.
+Remember that in a map, we store associations between keys and values.
+We need to be able to insert and remove such associations, and to look
+up the associated value for a given key.
+We already saw a brief preview of Search Trees in Section~\ref{sec:trees.search-trees}.
+There, we only showed the keys in our graphic depiction.
+In this and the next chapter, we will do the same thing. 
+However, even though we only show keys in our diagrams, it is implied
+that for each key, there is also an associated value stored, and that
+looking up this value is really the main reason for studying trees in
+the first place.
+
+Also, for maps, one typically assumes that there can only be one copy
+of each key. If you explicitly want multiple copies of the same key,
+you would call it a multi-map. It makes some implementation details
+more messy, and we want to focus on the essentials here. So from now
+on, in all of our examples, we will not have the possibility of
+duplicates among the keys.
+
+\section{The Basics}
+While many search trees (including our introductory example in
+Section~\ref{sec:trees.search-trees})
+are binary, the ones we will analyze here in depth are not.
+2-3 Trees differ from binary search trees in that each node contains 1
+or 2 keys.
+Unless it is a leaf, a node with 1 key has exactly 2 children, and a
+node with 2 keys has exactly 3 children.
+This can be generalized further: we can build trees with $m$ keys in
+which each non-leaf node has $m+1$ children. We will see 2-3-4 trees
+later (where nodes have 1--3 keys), and in practice, there are reasons
+to use trees in which nodes have several hundred or thousand keys.
+
+Also, we will see later that as a temporary step in adding a key to a
+2-3 Tree, we sometimes have nodes with 3 keys and 4 subtrees;
+similarly, as part of deleting a key, we sometimes end up with a node
+with 0 keys and one subtree. 
+
+We'll see those exceptions soon enough.
+The defining properties of 2-3 Trees are the following:
+
+\begin{itemize}
+\item All leaves must be at the same level.
+\item For nodes with 1 key $k$, the binary search tree property holds:
+  all keys in the left subtree are smaller than $k$, 
+  and all keys in the right subtree are greater than $k$.
+\item For nodes with 2 keys $k_1 < k_2$, the three subtrees $T_1, T_2,
+  T_3$ satisfy the following property:
+  \begin{enumerate}
+  \item All keys in $T_1$ are smaller than $k_1$.
+  \item All keys in $T_2$ are strictly between $k_1$ and $k_2$.
+  \item All keys in $T_3$ are greater than $k_2$.
+  \end{enumerate}
+\end{itemize}
+
+It will be our job in building these trees to ensure that the defining
+properties hold at all times. We will see later how to do that.
+We will also see how to do search, and why the depth of the tree is
+$O(\log n)$.
+
+To implement a 2-3 Tree, we will need a slightly revised version of a
+node, to accommodate multiple keys and values. The class would look as
+follows:
+
+\begin{verbatim}
+template <class KeyType, class ValueType>
+class Node {   // variables could be public, or could add getters/setters
+  int numberKeys;
+  KeyType key[2];      // space for up to 2 keys
+  ValueType value[2];  // space for the corresponding values
+  Node* subtree[3];    // pointers to the up to 3 subtrees
+}
+\end{verbatim}
+
+Internally, the best way to store a 2-3 Tree is probably with a
+dynamic memory structure and pointers, storing a pointer to the root
+somewhere. Initially, when the tree is empty, we can set the root
+pointer to \code{NULL}. The tree will grow both in number of nodes and
+height as insertions happen, so obviously, we do not want to fix its
+size ahead of time.
+
+We could also try to store the tree in an array (like we did for
+Priority Queues), but lose all of the advantages of doing so, as index
+calculations are not possible any more. When the tree was complete and
+binary, it was very easy to figure out which were the children of a
+given node, but here, it would depend on the degrees of many other
+nodes, which would take way too long to look up.
+
+\section{Search and Traversal}
+The first useful observation about 2-3 Trees is that --- like other
+search trees --- they make it really easy to search for a key, and to 
+output all keys in sorted order. 
+
+To search for a key, we simply generalize the search procedure for
+binary trees. 
+When a particular \code{key} is requested, and we search in a subtree
+with a given root \code{r}, we compare \code{key}
+to \code{r->key[0]} (and \code{r->key[1]}, if \code{r} has two keys).
+If we found the key, great. Otherwise, we can determine which of the
+two (or three) subtrees to recursively search in.
+The code would look as follows:
+
+\begin{verbatim}
+ValueType search (KeyType key, Node *r) const
+{
+  if (r == NULL) throw KeyNotFoundException;
+  else {
+     if (key < r->key[0]) return search (key, r->subtree[0]);
+     else if (key == r->key[0]) return r->value[0];
+     else if (numberKeys == 1 || key < r->key[1]) return search (key, r->subtree[1]);
+     else if (key == r->key[1]) return r->value[1];
+     else return search (key, r->subtree[2]);
+  }
+}
+\end{verbatim}
+
+To traverse all of the keys in sorted order, 
+we simply use depth-first in-order traversal (see Section~\ref{sec:trees.traversing}).
+That is, at any node, we first recursively visit the entire
+left subtree, then the key (or left key, if there are two), then the
+middle tree (if it exists), the right key (if it exists), and finally
+the right subtree. This is the natural generalization of in-order
+traversal from binary trees to 2-3 Trees.
+
+This describes how to implement an ordered iterator over search
+trees. This is one of the main advantages of search trees over
+Hashtables as data structures for maps. For Hashtables, it's
+much harder to implement an efficient Iterator. 
+(Hashtables have other advantages to compensate.)
+
+\section{Inserting and Removing Keys: Overview}
+In implementing insertions and deletions on 2-3 Trees, we should keep
+in mind the following:
+
+\begin{itemize}
+\item The 2-3 Tree properties must always hold after we are done with
+  the operation, so that the tree remains balanced. 
+  Thus, we must ensure that all leaves are at the same level,
+  two-key nodes have three children, 
+  one-key nodes have two children, 
+  and we can't have any number other than 1 or 2 keys in one node. 
+\item All insertions and removals in search trees typically (and
+  definitely for 2-3 Trees) happen at a leaf; that's much easier to
+  deal with than changing things at internal nodes.
+\item Typically, pre-processing (for removals) and/or post-processing
+  (to restore various properties) is required, in addition to just
+  adding or removing keys.
+
+  More concretely, we saw for priority queues that the way to insert
+  or remove keys was to temporarily violate the heap property, and
+  then fix it with a recursive function. 
+  For 2-3 Trees, we will do the same thing.
+
+  In doing this, we will \emph{never, ever} violate the first property
+  (having all leaves at the same level); this property would be
+  incredibly hard to restore. 
+  Instead, we will temporarily generate nodes with 0 keys (for
+  deletion) and with 3 keys (for addition), and then fix that systematically.
+\end{itemize}
+
+
+In explaining how insertions and removals work, our running example
+will be the tree $T$ shown in Figure~\ref{fig:running-example}:
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(0,-4)(0,1)
+\pstree{\Toval{6 14}}
+        {
+	 \pstree{\Tcircle{4}}
+                {
+		  \Toval{1 3}
+		  \Tcircle{5}
+                }
+	 \pstree{\Toval{8 10}}
+                {
+		  \Tcircle{7}
+		  \Tcircle{9}
+		  \Toval{11 13}
+                }
+	 \pstree{\Tcircle{19}}
+                {
+		  \Tcircle{17}
+		  \Tcircle{23}
+                }
+        }
+\end{pspicture}
+\caption{Our running example $T$ of a 2-3 Tree.\label{fig:running-example}}
+\end{center}
+\end{figure}
+
+\section{Inserting Keys}
+Whenever we insert a key (or, more precisely, a key-value pair) into a
+tree, the first thing we do is search for it, unsuccessfully, of
+course. (If we found it, that would be a duplicate, so we'd throw an
+exception or otherwise signal that the key was already in the map.)
+We then insert it into the leaf node where the search
+terminated. If the leaf node only had one key before, it has two keys
+now, and everything is good.
+But if the leaf node already had two keys, then it now has three keys,
+so we'll need to fix it.
+We will see how to fix it by looking at the effects of inserting a
+number of keys into our example tree $T$.
+
+First, let's look at the case of inserting 21 into $T$.
+To do so, we search for 21. When we do that, we will terminate at the
+node that already contains the key 23.
+This leaf node has only one key, so we can simply add 21.
+The result will only be a local change, and our tree now looks as
+in Figure~\ref{fig:insert-21}:
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(0,-4)(0,1)
+\pstree{\Toval{6 14}}
+       {
+	  \pstree{\Tp}{\Ttri{\phantom{5}}}
+	  \pstree{\Tp}{\Ttri{\phantom{5}}}
+          \pstree{\Tcircle{19}}
+		{
+		  \Tcircle{17}
+		  \Toval{21 23}
+		}
+       }
+\end{pspicture}
+\caption{$T$ after inserting the key 21.
+In this and subsequent figures, we'll just write triangles to denote
+parts that are unchanged or not particularly interesting.\label{fig:insert-21}}
+\end{center}
+\end{figure}
+	
+This was easy. Of course, we won't always be so lucky as to insert
+into a node with only a single key. So next, let's look at what
+happens when we insert 26 into the tree we got after inserting 21.
+The key 26 also belongs in the node with 21 and 23, so when we add it
+to the node, that leaf now contains three keys, as shown in Figure~\ref{fig:insert-26-1}:
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(0,-4)(0,1)
+\pstree{\Toval{6 14}}
+       {
+	  \pstree{\Tp}{\Ttri{\phantom{5}}}
+	  \pstree{\Tp}{\Ttri{\phantom{5}}}
+          \pstree{\Tcircle{19}}
+		{
+		  \Tcircle{17}
+		  \Toval{21 23 26}
+		}
+       }
+\end{pspicture}
+\caption{After inserting the key 26.
+Having three keys in a node is illegal, so we need to fix this.\label{fig:insert-26-1}}
+\end{center}
+\end{figure}
+
+To fix this, we can break up a node with 3 keys, by moving its middle
+key up to the parent node, and making the two other keys into separate
+nodes with one key each.
+In our example, 23 gets moved into the node that currently contains
+only the key 19, turning it into a node containing 19 and 23. 
+The other two elements, 21 and 26, are split into two separate nodes
+(since the  parent node is now a two-key node, it can support three
+children), and these nodes become the children nodes for the node
+containing 19 and 23.
+The resulting tree looks as shown in Figure~\ref{fig:insert-26-2}.
+	
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(0,-4)(0,1)
+\pstree{\Toval{6 14}}
+       {
+	  \pstree{\Tp}{\Ttri{\phantom{5}}}
+	  \pstree{\Tp}{\Ttri{\phantom{5}}}
+	  \pstree{\Toval{19 23}}
+		{
+			\Tcircle{17}
+			\Tcircle{21}
+			\Tcircle{26}
+		}
+       }
+\end{pspicture}
+\caption{After fixing the problem from inserting the key 26.\label{fig:insert-26-2}}
+\end{center}
+\end{figure}
+
+So in this case, with just one split operation, the problem was fixed.
+Next, let's see what happens when we insert 12 into $T$.
+(So we're thinking of inserting it into the \emph{original} tree, but
+it makes no difference in this particular case if you want to think of
+inserting it into the tree after we already inserted 21 and 26.)
+
+Again, we first search for 12, ending up in the leaf that contains the
+keys 11 and 13 already. Again, we add it to the leaf node, resulting
+in 3 keys in that node. 
+The resulting situation is shown in Figure~\ref{fig:insert-12-1}. 
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(0,-4)(0,1)
+\pstree{\Toval{6 14}}
+        {
+	 \pstree{\Tp}{\Ttri{\phantom{5}}}
+	 \pstree{\Toval{8 10}}
+                {
+		  \Tcircle{7}
+		  \Tcircle{9}
+		  \Toval{11 12 13}
+                }
+         \pstree{\Tp}{\Ttri{\phantom{5}}}
+        }
+\end{pspicture}
+\caption{The result of inserting the key 12 into $T$.\label{fig:insert-12-1}}
+\end{center}
+\end{figure}
+
+As before, we take the middle key --- here, 12 --- and move it up to
+the parent's node, splitting the keys 11 and 13 into separate new
+nodes. But now, the parent has 3 keys, and 4 subtrees, as shown in
+Figure~\ref{fig:insert-12-2}. So we'll have to fix that.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(0,-4)(0,1)
+\pstree{\Toval{6 14}}
+        {
+	 \pstree{\Tp}{\Ttri{\phantom{5}}}
+	 \pstree{\Toval{8 10 12}}
+                {
+		  \Tcircle{7}
+		  \Tcircle{9}
+		  \Tcircle{11}
+                  \Tcircle{13}
+                }
+         \pstree{\Tp}{\Ttri{\phantom{5}}}
+        }
+\end{pspicture}
+\caption{Moving the key 12 one level up.\label{fig:insert-12-2}}
+\end{center}
+\end{figure}
+
+To fix this new problem of a node with 3 keys, we again take the
+middle key --- in this case, 10 --- and move it up one level, into the
+parent node with keys 6 and 14.
+Now, the keys 8 and 12 get split and become their own nodes; the new
+node containing 8 obtains the left two subtrees (here, nodes with keys
+7 and 9), while the node with key 12 obtains the right two subtrees,
+with keys 11 and 13. 
+The resulting tree is shown in Figure~\ref{fig:insert-12-3}.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(0,-4)(0,1)
+\pstree{\Toval{6 10 14}}
+        {
+	 \pstree{\Tp}{\Ttri{\phantom{5}}}
+	 \pstree{\Tcircle{8}}
+                {
+		  \Tcircle{7}
+		  \Tcircle{9}
+                }
+         \pstree{\Tcircle{12}}
+                {
+		  \Tcircle{11}
+                  \Tcircle{13}
+                }
+         \pstree{\Tp}{\Ttri{\phantom{5}}}
+        }
+\end{pspicture}
+\caption{Moving the key 10 one level up.\label{fig:insert-12-3}}
+\end{center}
+\end{figure}
+	
+Now, we have moved the problem yet another level up. 
+The root node now contains three keys 6, 10, and 14.
+So we do the same thing: we push up the middle key (here, 10) one
+layer, and split the other two keys into separate nodes, each
+inheriting two of the subtrees. 
+The result is shown in Figure~\ref{fig:insert-12-4}
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(0,-5)(0,1)
+\pstree{\Tcircle{10}}
+       {
+        \pstree{\Tcircle{6}}
+               {
+                \pstree{\Tp}{\Ttri{\phantom{5}}}
+                \pstree{\Tcircle{8}}
+                        {
+                        \Tcircle{7}
+                        \Tcircle{9}
+                        }
+                }
+         \pstree{\Tcircle{14}}
+                {
+                 \pstree{\Tcircle{12}}
+                        {
+                        \Tcircle{11}
+                        \Tcircle{13}
+                        }
+                 \pstree{\Tp}{\Ttri{\phantom{5}}}
+                }
+        }
+\end{pspicture}
+\caption{Moving the key 10 one more level up.\label{fig:insert-12-4}}
+\end{center}
+\end{figure}
+
+At this point, we finally have obtained a legal 2-3 tree again, and
+the process terminates. Notice that we have now increased the height
+of the tree by one. Some students were wondering in class how the tree
+can ever grow in height if we always insert at leaves. Now we know. It
+grows at the root, even though insertion happens at the leaves.
+
+The important thing to keep in mind is that whenever a node has too
+many keys, you move up the \emph{middle} key to the parent node, and
+split the remaining two keys into two separate new nodes. The left
+node inherits the two left subtrees, while the right node inherits the
+two right subtrees.
+
+Below is pseudocode to help you understand how to insert into 2-3
+Trees in general.
+\begin{verbatim}
+Inserting a new key
+	
+1. Search for the key. If found, deal with duplicate.
+   Otherwise, we have found the leaf where the key belongs.
+2. Insert the key into the leaf.
+      If the leaf only had one key before, we are done now.
+3. Otherwise, we must now fix the leaf.
+
+To fix a node with 3 keys (a b c):
+1. Move b up into the parent node if there is one.
+   (Otherwise, create a new root for the tree, containing just b.)
+2. Create a node with just a as the key, and make it the left child of the b node.
+3. Create a node with just c as the key, and make it the right child of the b node.
+\end{verbatim}
+
+
+Notice that insertion as we defined it maintains the properties of a
+2-3 Tree: the number of levels on all subtrees is increased by one
+simultaneously when creating a new root, and not increased for any node
+otherwise. 
+
+Let's try to analyze the running time. To find the right leaf node
+takes $\Theta(h)$, where $h$ is the height of the tree.
+To actually insert the key into the tree takes $\Theta(1)$.
+Breaking any three-key node into new smaller nodes takes $\Theta(1)$,
+and we have to do this at most once for each level of the tree, so it
+takes $\Theta(h)$.
+
+So next, we want to calculate the height of a 2-3 Tree. We do this the
+way we have calculated tree heights before.
+If the tree has height $h$, because all leaves are at the same level,
+and each internal node has at least 2 children, it has at least as
+many nodes as a complete binary tree of $h$ levels (plus one more),
+giving us an upper bound of $\log_2(n)$ on the height, as we
+calculated before in the context of heaps.
+On the other hand, a tree of $h$ levels with maximum degree 3 has at
+most 1 node on level 0, 3 nodes on level 1, 9 nodes on level 2, and
+generally $3^k$ nodes on level $k$, for a total of at most
+$\sum_{k=0}^{h-1} 3^k = \frac{3^h-1}{3-1} \leq \frac{3^h}{2}$ nodes.
+Thus, $n \leq 3^h/2$, giving us that $h \geq \log_3(2n) \geq \log_3(n)$.
+Thus, $h$ is between $\log_3(n)$ and $\log_2(n)$, and those two are
+within small constant factors of each other.
+Thus, the runtime for insertion is $\Theta(\log (n))$.
+(We can ignore the base of the logarithm, as they are off only by
+constant factors.)
+
+\section{Removing Keys}
+To delete a key (and its value) from a 2-3 tree, we of course first
+have to find it. Once we have found the key, deleting it from an
+internal node would be really complicated. Therefore, in 2-3 trees
+(and pretty much all search trees), we always have a first step of
+ensuring that we only delete keys from leaf nodes.
+
+The way to do this is to search for the next-larger (or possibly
+next-smaller, but for concreteness, we'll stick with next-larger)
+key. This is accomplished by first going down the edge immediately to
+the right of the key to delete. (That is, the middle edge if the key
+was the left key, or the right edge if the key was the right key.)
+Then, we always go down the leftmost edge of all nodes, until we hit a
+leaf. At that point, the leftmost key in that leaf is the successor.
+
+Once we have found the successor, we swap it with the key we wanted to
+delete. This is safe to do, as no other element could now be out of
+place --- everything in the right subtrees is larger than the
+successor. Now, the key we want to delete is in a leaf, and we can
+start from there.
+
+The deletion algorithm will start with deleting a key at a leaf, but
+then possibly propagate necessary ``fixes'' up the tree.
+By far the easiest case is if the leaf contained two keys. 
+Then, we simply delete the key, and we are done.
+
+Otherwise, we now have a leaf with no keys in it. We can't just delete
+the leaf, as this would violate the 2-3 tree property of all leaves
+being at the same level. So we need to find ways to fix the tree.
+The operations we perform will be the same at the leaf level as at the
+higher levels, so we'll phrase the problem case more generally.
+
+At the point when we need to fix something, we have an internal node
+with 0 keys and one subtree hanging off. In the base case, this
+subtree is just \code{NULL}, but as we propagate up (recursively or
+iteratively), there will be other subtrees. Thus, the problem
+situation looks as shown in Figure~\ref{fig:problem-tree}.
+(The black node has no keys, and one subtree below it, which is empty
+for a leaf.)
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(-3,-2)(3,1)
+\ProblemTree
+\end{pspicture}
+\caption{The problem case in deletion. The black node has no keys. \label{fig:problem-tree}}
+\end{center}
+\end{figure}
+
+In order to deal with this problem case, we distinguish a few cases,
+based on how many neighbors the empty node has, and how many keys they
+in turn have.
+
+\begin{enumerate}
+\item If the empty node has a sibling with two keys, then the node can
+  borrow a key from a sibling. A typical version of this case would
+  look as shown in Figure~\ref{fig:borrow-from-neighbor}:
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(-3,-5)(3,1)
+\pstree{\Tcircle{9}}
+       {
+        \pstree{\Toval{4 7}}
+               {
+                 \pstree{\Tp}{\Ttri{$T_1$}}
+                 \pstree{\Tp}{\Ttri{$T_2$}}
+                 \pstree{\Tp}{\Ttri{$T_3$}}
+               }
+        \ProblemTree
+       }
+
+\pstree{\Tcircle{7}}
+      {
+        \pstree{\Tcircle{4}}
+               {
+                 \pstree{\Tp}{\Ttri{$T_1$}}
+                 \pstree{\Tp}{\Ttri{$T_2$}}
+               }
+        \pstree{\Tcircle[fillstyle=solid,fillcolor=lightgray]{9}}
+               {
+                 \pstree{\Tp}{\Ttri{$T_3$}}
+                 \pstree{\Tp}{\Ttri{$T$}}
+               }
+       }
+\end{pspicture}
+\caption{Borrowing from a sibling. The empty node borrows from its
+  sibling (via its parent) and is shown in gray after. \label{fig:borrow-from-neighbor}}
+\end{center}
+\end{figure}
+
+It works similarly if the empty node has two siblings.
+When the immediately adjacent sibling has two keys, we can do the same
+thing (by pushing one of the sibling's keys to the parent, and the
+parent's key down to the empty node).
+When it is the sibling two hops away that has two keys, we push one
+key up, a key from the parent down to the middle child, and the key
+from the middle child up to the parent.
+
+\item If no sibling of the empty node has two keys, then the next case
+  is that the empty node has two siblings (i.e., the parent has two
+  keys). In that case, the empty node can borrow a key from the
+  parent, with help from the siblings.
+  A typical case is shown in Figure~\ref{fig:borrow-from-parent}.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(0,-5)(3,1)
+\pstree{\Toval{4 9}}
+       {
+        \pstree{\Tcircle{2}}
+               {
+                 \pstree{\Tp}{\Ttri{$T_1$}}
+                 \pstree{\Tp}{\Ttri{$T_2$}}
+               }
+        \pstree{\Tcircle{6}}
+               {
+                 \pstree{\Tp}{\Ttri{$T_3$}}
+                 \pstree{\Tp}{\Ttri{$T_4$}}
+               }
+        \ProblemTree
+       }
+
+\pstree{\Tcircle{4}}
+       {
+        \pstree{\Toval{2}}
+               {
+                 \pstree{\Tp}{\Ttri{$T_1$}}
+                 \pstree{\Tp}{\Ttri{$T_2$}}
+               }
+        \pstree{\Tcircle[fillstyle=solid,fillcolor=lightgray]{6 9}}
+               {
+                 \pstree{\Tp}{\Ttri{$T_3$}}
+                 \pstree{\Tp}{\Ttri{$T_4$}}
+                 \pstree{\Tp}{\Ttri{$T$}}
+               }
+       }
+\end{pspicture}
+\caption{Borrowing from the parent. The empty node's sibling borrows from its
+  parent and is shown in gray after. \label{fig:borrow-from-parent}}
+\end{center}
+\end{figure}
+
+This works pretty much the same way if instead of the right child, it
+is the middle or left child of the parent that was empty.
+
+\item The final remaining case is when the empty node has only one
+  sibling, and that sibling contains only one key.
+  In that case, we cannot fix the problem immediately. 
+  Instead, we merge the parent and the sibling into one node with two
+  keys, and push up the empty node one level, where we will try to
+  solve it instead. Thus, this is the one case where we need recursion
+  (or an iterative approach), while all the others solve the problem
+  right away.
+  This case is shown in Figure~\ref{fig:propagate-up}.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(-3,-5)(3,1)
+\pstree{\Tcircle{7}}
+       {
+        \pstree{\Tcircle{4}}
+               {
+                 \pstree{\Tp}{\Ttri{$T_1$}}
+                 \pstree{\Tp}{\Ttri{$T_2$}}
+               }
+        \ProblemTree
+       }
+
+\pstree{\Tcircle[fillstyle=solid,fillcolor=black]{\phantom{5}}}
+      {
+        \pstree{\Toval{4 7}}
+               {
+                 \pstree{\Tp}{\Ttri{$T_1$}}
+                 \pstree{\Tp}{\Ttri{$T_2$}}
+                 \pstree{\Tp}{\Ttri{$T$}}
+              }
+       }
+\end{pspicture}
+\caption{Merging two nodes and recursing. The sibling and parent are
+  merged, and the empty node is pushed up one level, where it still
+  needs to be dealt with. \label{fig:propagate-up}}
+\end{center}
+\end{figure}
+
+\item There is one final case. If the empty node is the root now, then
+  it can be safely deleted. Its one child (the root of $T$) becomes
+  the new root of the tree, which is now one level smaller.
+\end{enumerate}
+
+This covers all the cases; each has a few subcases, depending on which
+of the children is empty, but they all follow the same pattern.
+
+Notice that these operations carefully maintain all the properties:
+the leaves stay at the same level, each node has one or two children
+once we are done fixing problems, and the tree is still a 2-3 search
+tree. 
+
+\subsection{A detailed illustration}
+
+To illustrate how to apply the rules given above, let's delete a few
+keys from our example tree $T$, but with another key 16 added to it.
+The resulting tree is shown in Figure~\ref{fig:added-16}.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(0,-4)(0,1)
+\pstree{\Toval{6 14}}
+        {
+	 \pstree{\Tcircle{4}}
+                {
+		  \Toval{1 3}
+		  \Tcircle{5}
+                }
+	 \pstree{\Toval{8 10}}
+                {
+		  \Tcircle{7}
+		  \Tcircle{9}
+		  \Toval{11 13}
+                }
+	 \pstree{\Tcircle{19}}
+                {
+		  \Toval{16 17}
+		  \Tcircle{23}
+                }
+        }
+\end{pspicture}
+\caption{The tree $T$ with the key 16 added.\label{fig:added-16}}
+\end{center}
+\end{figure}
+
+Now, let's see what happens when we want to remove the key 14.
+As we mentioned earlier, removing keys from internal nodes is a
+glorious mess, so we swap 14 with its successor, which is 16 (go right
+once, then left after that).
+The result of swapping 14 (key to delete) with its successor (16) is
+shown in Figure~\ref{fig:swap}.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(0,-4)(0,1)
+\pstree{\Toval{6 16}}
+        {
+	 \pstree{\Tcircle{4}}
+                {
+		  \Toval{1 3}
+		  \Tcircle{5}
+                }
+	 \pstree{\Toval{8 10}}
+                {
+		  \Tcircle{7}
+		  \Tcircle{9}
+		  \Toval{11 13}
+                }
+	 \pstree{\Tcircle{19}}
+                {
+		  \Toval{14 17}
+		  \Tcircle{23}
+                }
+        }
+\end{pspicture}
+\caption{After 16 and 14 have been swapped.\label{fig:swap}}
+\end{center}
+\end{figure}
+
+Now, the key can be safely deleted from the leaf.
+Notice that this maintains the search tree property, as the successor
+was safe to take the place of the key we want to delete.
+The result of deleting 14 now is shown in Figure~\ref{fig:delete-14}.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(0,-4)(0,1)
+\pstree{\Toval{6 16}}
+        {
+	 \pstree{\Tcircle{4}}
+                {
+		  \Toval{1 3}
+		  \Tcircle{5}
+                }
+	 \pstree{\Toval{8 10}}
+                {
+		  \Tcircle{7}
+		  \Tcircle{9}
+		  \Toval{11 13}
+                }
+	 \pstree{\Tcircle{19}}
+                {
+		  \Tcircle{17}
+		  \Tcircle{23}
+                }
+        }
+\end{pspicture}
+\caption{After the deletion of the key 14.\label{fig:delete-14}}
+\end{center}
+\end{figure}
+
+
+Deleting the key 14 was pretty easy: after the swap, its leaf node
+contained two keys, which made it safe to just delete a key.
+Next, let's see what happens if we remove the key 5.
+That key is in a node all by itself, so after we remove it, we have an
+empty leaf node. This situation is shown in Figure~\ref{fig:delete-5-1}.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(0,-4)(0,1)
+\pstree{\Toval{6 16}}
+        {
+	 \pstree{\Tcircle{4}}
+                {
+		  \Toval{1 3}
+		  \Tcircle[fillstyle=solid,fillcolor=black]{\phantom{5}}
+                }
+	 \pstree{\Tp}{\Ttri{\phantom{5}}}
+         \pstree{\Tp}{\Ttri{\phantom{5}}}
+        }
+\end{pspicture}
+\caption{After the deletion of the key 5. The now-empty node is shown
+  in black.\label{fig:delete-5-1}}
+\end{center}
+\end{figure}
+
+Here, the empty node has a sibling with two keys 1 and 3, so we can
+apply the first rule from our list above. 
+In this case, we can move the key from the parent down to fill the
+node, and move one of the keys from the sibling up to the parent.
+The result is the tree in Figure~\ref{fig:delete-5-2}:
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(0,-4)(0,1)
+\pstree{\Toval{6 16}}
+        {
+	 \pstree{\Tcircle{3}}
+                {
+		  \Tcircle{1}
+		  \Tcircle{4}
+                }
+	 \pstree{\Toval{8 10}}
+                {
+		  \Tcircle{7}
+		  \Tcircle{9}
+		  \Toval{11 13}
+                }
+	 \pstree{\Tcircle{19}}
+                {
+		  \Tcircle{17}
+		  \Tcircle{23}
+                }
+        }
+\end{pspicture}
+\caption{Borrowing a key from the sibling via the parent.\label{fig:delete-5-2}}
+\end{center}
+\end{figure}
+
+Next, let's see how borrowing from a sibling works when a node has two
+siblings, and the one with two keys is the furthest.
+To see this, let's look at what happens if we next remove the key 7.
+The intermediate stage will be as shown in Figure~\ref{fig:delete-7-1}.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(0,-4)(0,1)
+\pstree{\Toval{6 16}}
+        {
+	 \pstree{\Tp}{\Ttri{\phantom{5}}}
+	 \pstree{\Toval{8 10}}
+                {
+		  \Tcircle[fillstyle=solid,fillcolor=black]{\phantom{5}}
+		  \Tcircle{9}
+		  \Toval{11 13}
+                }
+         \pstree{\Tp}{\Ttri{\phantom{5}}}
+        }
+\end{pspicture}
+\caption{Deleting the key 7. The now-empty node is shown in black.\label{fig:delete-7-1}}
+\end{center}
+\end{figure}
+
+This time, borrowing a key from the sibling still works, but takes a
+few more intermediate steps. We're still in the first rule case, but
+it works a little differently.
+The key 11 from the sibling gets moved up to the parent node; the key
+10 from the parent gets moved down to the other sibling, while the key
+9 from the other sibling gets moved up to the parent. Finally, we can
+move the key 8 down to the empty node. The result is only locally
+rearranged, and shown in Figure~\ref{fig:delete-7-2}.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(0,-4)(0,1)
+\pstree{\Toval{6 16}}
+        {
+	 \pstree{\Tp}{\Ttri{\phantom{5}}}
+	 \pstree{\Toval{9 11}}
+                {
+		  \Tcircle{8}
+		  \Tcircle{10}
+		  \Tcircle{13}
+                }
+         \pstree{\Tp}{\Ttri{\phantom{5}}}
+        }
+\end{pspicture}
+\caption{Borrowing from a 2-step removed sibling via the parent. This
+  requires some moving up and down of keys, but only between the
+  siblings and the parent.\label{fig:delete-7-2}}
+\end{center}
+\end{figure}
+
+Next, let's see what happens when there's no sibling to borrow from. 
+To see this, we delete the key 8 next. 
+The resulting tree is shown in Figure~\ref{fig:delete-8-1}.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(0,-4)(0,1)
+\pstree{\Toval{6 16}}
+        {
+	 \pstree{\Tp}{\Ttri{\phantom{5}}}
+	 \pstree{\Toval{9 11}}
+                {
+		  \Tcircle[fillstyle=solid,fillcolor=black]{\phantom{5}}
+		  \Tcircle{10}
+		  \Tcircle{13}
+                }
+         \pstree{\Tp}{\Ttri{\phantom{5}}}
+        }
+\end{pspicture}
+\caption{Deleting the key 8. The now-empty node is shown in black.\label{fig:delete-8-1}}
+\end{center}
+\end{figure}
+
+Now, we cannot borrow from a sibling directly. But here, fortunately,
+the empty node has a parent with two keys, so it's possible to apply
+the second rule and borrow a key from the parent, and another one from
+the immediately neighboring sibling. 
+The resulting tree is shown in Figure~\ref{fig:delete-8-2}.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(0,-4)(0,1)
+\pstree{\Toval{6 16}}
+        {
+	 \pstree{\Tp}{\Ttri{\phantom{5}}}
+	 \pstree{\Toval{11}}
+                {
+		  \Toval{9 10}
+		  \Tcircle{13}
+                }
+         \pstree{\Tp}{\Ttri{\phantom{5}}}
+        }
+\end{pspicture}
+\caption{Borrowing a key from the parent.\label{fig:delete-8-2}}
+\end{center}
+\end{figure}
+
+Next, let's look at the effect of deleting the key 17
+from the tree. The first step of deletion is shown in
+Figure~\ref{fig:delete-17-1}.
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(0,-4)(0,1)
+\pstree{\Toval{6 16}}
+        {
+	 \pstree{\Tcircle{3}}
+                {
+		  \Tcircle{1}
+		  \Tcircle{4}
+                }
+	 \pstree{\Toval{11}}
+                {
+		  \Toval{9 10}
+		  \Tcircle{13}
+                }
+	 \pstree{\Tcircle{19}}
+                {
+		  \Tcircle[fillstyle=solid,fillcolor=black]{\phantom{5}}
+		  \Tcircle{23}
+                }
+        }
+\end{pspicture}
+\caption{Deleting the key 17. The now-empty node is shown in black.\label{fig:delete-17-1}}
+\end{center}
+\end{figure}
+
+Now, there is no easy way to fix the problem at this level:
+we have to apply the third rule and escalate the problem one level up. 
+To do so, we combine the one key in the parent node with the one key
+in the sibling node to form a node with two keys, and make the parent
+empty. 
+In other words, we produce the tree shown in Figure~\ref{fig:delete-17-2}:
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(0,-4)(0,1)
+\pstree{\Toval{6 16}}
+        {
+	 \pstree{\Tcircle{3}}
+                {
+		  \Tcircle{1}
+		  \Tcircle{4}
+                }
+	 \pstree{\Toval{11}}
+                {
+		  \Toval{9 10}
+		  \Tcircle{13}
+                }
+	 \pstree{\Tcircle[fillstyle=solid,fillcolor=black]{\phantom{5}}}
+                {
+		  \Toval{19 23}
+                }
+        }
+\end{pspicture}
+\caption{Combining a parent key with a sibling key, and passing the
+  problem of the empty node up one level.\label{fig:delete-17-2}}
+\end{center}
+\end{figure}
+
+At the next higher level, we now have a parent with two keys, so we
+can apply the second rule and borrow from the parent to fix the
+problem, giving us the tree shown in Figure~\ref{fig:delete-17-3}.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(0,-4)(0,1)
+\pstree{\Tcircle{6}}
+        {
+	 \pstree{\Tcircle{3}}
+                {
+		  \Tcircle{1}
+		  \Tcircle{4}
+                }
+	 \pstree{\Toval{11 16}}
+                {
+		  \Toval{9 10}
+		  \Tcircle{13}
+		  \Toval{19 23}
+                }
+        }
+\end{pspicture}
+\caption{Borrowing from the parent to resolve the empty node in the
+  middle of the tree.\label{fig:delete-17-3}}
+\end{center}
+\end{figure}
+
+Of course, we were a bit lucky --- if the parent had had only one key,
+we may have had to pass the problem up yet another level, possibly all
+the way up to the root. Once the root is empty, though, it is safe to
+simply delete it (the fourth rule), thereby reducing the height of the
+tree by 1.
+
+\subsection{Running Time}
+When we look at the running time, we see that rearranging the tree is
+only moving a constant number of pointers and keys (and values)
+between nodes. Thus, all of the operations above take time $O(1)$.
+If we apply rules 1, 2, or 4, we are thus done in $O(1)$. In case 3, we may
+continue iteratively or recursively, but we perform a rearrangement
+operation at most once per level of the tree. Since we already worked
+out that a 2-3 Tree has at most $\log_2(n)$ levels, the running time
+is $O(\log n)$ for each of the operations.
+Thus, in summary, we get that using a 2-3 tree, all operations take
+time $\Theta(\log n)$. (It is not hard to construct trees on which you
+do need to propagate up all levels for an insertion or a removal.)
+
+For many data structures, we say that which one to choose depends on
+the context. It is generally agreed that search trees (and Hashtables,
+which we will get to next) are simply better implementations of
+Dictionaries than those based on arrays, vectors, or lists. If you
+need an associative structure, don't use a linear structure --- use a
+tree or Hashtable.

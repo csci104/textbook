@@ -1,0 +1,243 @@
+In Chapter~\ref{chap:ADTs}, we introduced the \code{List} data type as
+one of the three central data types for this class.
+Remember that lists capture basically an expanding array:
+you can address positions by their numerical index,
+and \code{get}, \code{set}, \code{insert}, and \code{remove} items.
+As such, a \code{List} is the right data type when you need a more
+flexible array, which happens when you care about having
+data in a particular order.
+
+%DK: Text used to say that a linked list based implementation has been
+%used as a running example throughout, which does not appear to be
+%true.
+
+In your homeworks, you have been using linked lists to implement a
+\code{List}.
+An alternative and natural implementation is based on arrays as the
+internal data storage.
+In fact, that is how C++ implements its own \code{vector} class.
+As a reminder, here is a C++ style definition of the core functions of
+the \code{List} data type.
+We will just define our list for integers ---
+you will learn in Chapter~\ref{chap:templates} how to define generic
+template types that you can use for lists of different types of objects.
+
+% DK: Used to be =0 for all functions and const where appropriate.
+% Removed those since const and =0 have not yet been defined.
+
+\begin{verbatim}
+class List
+{
+   // everything assumes that pos is in bounds
+
+   void insert (int pos, int data);
+      // inserts the data immediately before position pos.
+   void remove (int pos);
+      // removes the data at position pos.
+
+   int get (int pos);
+      /* returns the data stored at position pos. */
+   void set (int pos, int data);
+      // sets the entry at position pos to data.
+}
+\end{verbatim}
+
+Using an array to store data internally will make reading and writing
+individual entries nice and easy,
+since that is what arrays are really good at.
+On the other hand, arrays are not designed to delete elements from the
+middle or insert them in the middle.
+Whenever we do so, we will need to move all the items which occur to
+the right of that position. 
+Also, arrays do not dynamically grow just because we want to insert
+more elements.
+So when --- as a result of our insertions --- the array is
+not large enough any more,
+we need to allocate a new larger array and copy over all the data.
+
+As a result, internally, we need three (private) variables:
+% DK: "private" used to be "private or protected", but protected has
+% not been defined here.
+
+\begin{verbatim}
+int *a;        // the array that contains all the data.
+int length;    // the number of elements we are storing right now. 
+int arraysize; // the size of the array, including elements not currently in use.
+\end{verbatim}
+
+Whatever array size we start out with, there may be a time
+(after enough insertions) when the array is not large enough.
+At that time, we will allocate a new larger array,
+and copy all the items over, then change \code{a} to point to the new
+larger array (and of course de-allocate the old array to avoid memory leaks). 
+How much larger should that new array be? There are different approaches:
+
+\begin{itemize}
+\item Increase the size by 1. This way, we never ``waste'' space,
+  because the array is exactly large enough to hold all its elements.
+  But this is also inefficient, because we have to copy the whole
+  array \emph{every time} a new element is added.
+  And copying is the most expensive part of the operations.
+\item A natural choice is to double the size of the array every time
+  it becomes too small. That way --- except for removals --- the array
+  is never more than twice as big as it really needs to be, and we are
+  not ``wasting'' much space. And we will see below that we also do not
+  waste much time on array copying this way.
+\item As a solution somewhere between, we could grow the array by some
+  factor other than 2, say, by increasing the size by 10\% or
+  something like that. Or we could increase it by adding a number more
+  than 1, say, adding 10 each time the array grows.
+\end{itemize}
+
+Implementing the \code{get} and \code{set} functions is really
+easy so we will not even give the code here.
+For the \code{insert} function, we will want to do something like this
+first:
+
+\begin{verbatim}
+void ArrayList::insert (int pos, int value) {
+   length++; 
+   if (length > arraysize)
+      //allocate new array and copy stuff over
+}
+\end{verbatim}
+
+Next, we need to make room at position \code{pos} by moving all
+entries between \code{pos} and \code{length-2} one position to the right.
+A first approach might be the following:
+
+\begin{verbatim}
+for (int i=pos; i < length-1; i++) 
+   a[i+1] = a[i];
+\end{verbatim}
+
+However, this does not work because we are overwriting everything with
+the same initial value. By the time the loop gets to position \code{pos+2},
+it has have overwritten that position with the value from \code{pos+1},
+which itself was previously overwritten with the value from \code{pos}.
+The easiest way to fix this is to move the elements in reverse order.
+\begin{verbatim}
+for (int i=length-2; i >= pos; i--)      
+    a[i+1] = a[i];
+\end{verbatim}
+Notice that the starting index is \code{length-2} because we have
+already incremented \code{length} earlier,
+so \code{length-1} is the last element that should be in use,
+and we are copying to position \code{i+1}. 
+ 
+After we have shifted everything to the right to make room at position
+\code{pos}, we can write the element there using \code{a[pos] = value}.
+
+\medskip
+
+The implementation of the \code{remove} function is quite similar. We
+do not need to resize the array\footnote{Optionally, one could shrink
+  the array when too much of it is unused. Again, one may want to
+  shrink only when half or more is unused, or something in between.}, 
+and we do not need to overwrite a position with a new element. 
+But we do need to shift all elements between \code{pos+1} and
+\code{length-1} one position to the left.
+That is done with a very similar loop. Notice that here, the loop will
+run from left to right (\code{pos+1} to \code{length-1}), because the
+element in position \code{i} should be saved into position \code{i-1}
+\emph{before} position \code{i} is overwritten.
+
+\section{Comparison of Running Times}
+We want to compare the array-based implementation of the \code{List}
+data type with the one based on linked lists from your earlier
+homeworks.
+Which one is better?
+Since they have different advantages for different types of operations,
+we will want to analyze the running time of the different operations
+in big-$O$ notation, and see what comes out.
+
+We start with the implementation based on linked lists.
+Here, all functions first have to find the element at a given position
+$i$, to return or change or insert or remove there.
+Searching for position $i$ by iterating from the head of the list
+takes $\Theta(i)$ steps.
+After that, all of the operations take just constant time to return or
+overwrite the content of the node at position $i$,
+or to update a constant number of pointers. 
+So the running time is $\Theta(i)$ for all operations,
+though we also want to keep in mind that it is all spent just scanning
+through a list and not overwriting --- the amount of writing is $\Theta(1)$.
+
+For arrays, the \code{get} and \code{set} functions take constant time
+$\Theta(1)$, since they know exactly what element to access.
+The \code{remove} and \code{insert} functions need to move all
+elements located to the right of the position $i$. 
+There are $\Theta(n-i)$ of those elements, so we spend a total of
+$\Theta(n-i)$ steps moving things.
+In summary, we get the following running times.
+
+\begin{center}
+\begin{tabular}{ l | l | l }
+    & Linked List & Array \\ \hline
+    \code{get (i)} & $\Theta(i)$ & $\Theta(1)$ \\ \hline
+    \code{set (i,newvalue)} & $\Theta(i)$ & $\Theta(1)$ \\ \hline
+    \code{remove(i)} & $\Theta(i)$ & $\Theta(n-i)$ \\ \hline
+    \code{insert(i,value)} & $\Theta(i)$ & $\Theta(n-i)$ \\ \hline
+\end{tabular} 
+\end{center}
+
+Notice that we are keeping $i$ around in the analysis of the running time.
+In a worst case, $i$ will be 0 or 1 (for arrays) or $n-1$ (for linked lists),
+and the running times will be $\Theta(n)$.
+But if there is a parameter (such as $i$ here) for which the
+dependence can be easily expressed,
+it does not hurt to retain the more fine-grained information that we
+have available anyway;
+in some cases (of which we will see examples later), this information
+can guide us to use the data structure more efficiently
+(by preferring to insert in smaller/larger positions), or it will lead
+to more accurate analysis of data structures building on top of the
+one we are considering.
+
+In the case of \code{insert} for an array-based implementation,
+we have been a little casual. We have not accounted for the cost of
+copying the entire array when the array needs to grow.
+That would take $\Theta(n)$ in addition to the $\Theta(n-i)$.
+If we allocate new arrays of size just one larger,
+this time will be incurred for each \code{insert},
+which is quite a lot slower.
+
+But when we always double the array size (or multiply it with a
+constant fraction, such as increasing by 10\%),
+there is a nice analysis trick we can do. 
+It is true that in the worst case, \emph{one} \code{insert} operation
+may take a long time ($\Theta(n)$).
+But if we look at a sequence of many \code{insert} operations,
+then for every one that takes $\Theta(n)$, there will be $n$
+operations that will now be fast, 
+because we know that the array has $n$ empty locations,
+and hence will not double in size until these locations are full. 
+So on average over all operations, the extra cost of $\Theta(n)$ can
+be averaged out over the next (or previous) $n$ operations, so that
+the total average cost per operation is actually only $\Theta(n-i)$.
+Notice that the average here is taken over a
+\emph{sequence of operations}, and not over anything random.
+This type of analysis, which some people consider more advanced, is
+called \todef{amortized analysis}; it is quite common in analyzing
+more advanced data structures,
+and we will learn a bit more about it in Chapter~\ref{chap:amortized}.
+
+\medskip
+
+The upshot of the table above is the following:
+if we expect to be doing mostly \code{get} and \code{set}
+operations, there is no debate that an array-based implementation will
+be much faster than one based on linked lists.
+If we expect to do a lot of \code{insert} and \code{remove}, then we
+have to trade off $\Theta(i)$ vs.~$\Theta(n-i)$.
+There is really not much difference:
+linked lists do better when we access the first half of the list,
+while arrays do better for the second half.
+That does not really guide us, unless we have strong reason to believe
+that our application really will prefer one half over the other.
+
+The one sense in which linked lists have an advantage is that most of
+their work only involves scanning over the list, while for arrays,
+much of the work is copying data around.
+Writing data tends to take a bit longer than reading,
+so we would expect the array-based implementation to be a little slower.

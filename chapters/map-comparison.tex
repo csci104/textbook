@@ -1,0 +1,40 @@
+By now, we have seen four general-purpose implementations of maps:
+Balanced Search Trees (Red-Black or 2-3), Hash Tables, Splay Trees,
+and Skip Lists. (We've also seen Lists of Arrays, but those were
+mostly for illustrating concepts of amortized analysis. 
+And Tries are specific to keys that are strings.)
+Let's compare a bit the guarantees that these different
+implementations give you, and where they have their advantages or
+disadvantages.
+
+\begin{description}
+\item[Balanced Trees:] Gives you an ironclad worst-case guarantee of
+  $O(\log n)$ for all operations. In addition, makes it very easy in
+  linear time to iterate over all the elements in sorted order.
+\item[Hash Tables:] Typical works in $O(1)$ time per
+  operation. However, this depends on assuming that keys are mapped to
+  random locations, or that the hash function ensures pseudo-random
+  destinations. By Pigeon Hole Principle, there are inputs on which
+  Hash Tables take $\Omega(n)$ per operation.
+\item[Splay Trees:] Guarantees a worst-case amortized time of $O(\log
+  n)$ per operation. Individual operations may take time
+  $\Omega(n)$. Like Balanced Trees, allow easy iterating over all
+  elements in sorted order. In addition, exploit locality, meaning
+  that repeat accesses to recently accessed elements are $O(1)$.
+\item[Skip Lists:] In expectation, all operations take $O(\log n)$,
+  though with unlucky (very unlikely) choices of levels, they could take
+  $\Omega(n)$. Fairly simple to implement, and allows iterating in
+  sorted order in $O(n)$.
+\end{description}
+
+So which one should you use? It obviously depends. Do you need
+ironclad per-operation guarantees, or are a few slower operations
+acceptable? How worried are you about worst cases? Do you need the
+ability to iterate over all keys in order? How much locality do you
+expect?
+
+In practice, most people use Hash Tables, as the $O(1)$ is really
+fast. But as you can see from the comparison, there are reasons to
+prefer the others in certain situations. If you can articulate the
+pros and cons for your \emph{specific} application, that will be half
+the battle. 

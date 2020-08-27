@@ -1,0 +1,796 @@
+In this chapter, we will first learn about overloading and operators,
+then see how to combine them to create easier-to-read code.
+We will also see where and how copy constructors are used,
+and learn about the difference between shallow and deep copying.
+
+\section{Overloading and Operators}
+Function overloading simply means having multiple functions of the
+same name, but with different numbers or types of parameters.
+For instance, when we write something like:
+\begin{verbatim}
+int minimum (int x, int y);
+double minimum (double x, double y);
+\end{verbatim}
+we have overloaded the \code{minimum} function.
+Doing this is perfectly acceptable:
+when you write \code{cout << minimum (a, b)},
+the compiler can tell from the arguments which of the two function to use.
+It is only when you try to have two functions with the same exact
+signature that you run into trouble:
+\begin{verbatim}
+bool foo (int x);
+void foo (int y);
+\end{verbatim}
+Now, if you call \code{foo(a)} on an integer \code{a},
+the compiler would not know which of the two functions you mean,
+so it will not let you write this code in the first place. 
+To summarize, \todef{overloading} is just having multiple functions of the same name.
+
+\todef{Operators} are symbols such as 
+\code{==}, \code{!=}, \code{=} (assignment), \code{<=}, \code{+},
+\code{-}, \code{++}, \code{*} (multiplication, and dereferencing), \code{[]}, 
+\code{<<}, \code{>>}, and many others.
+Most operators are binary, that is, they take two arguments, such as
+\code{x==y}, \code{x=y}, \code{a+b}, \code{a[i]}.
+But there are also some unary ones (taking one argument),
+such as \code{!b}, \code{*x}, \code{i++}.
+For operators, C++ knows where the arguments go. For many operators
+(\code{=}, \code{==}, \code{<=}, \code{+}, \code{<<}),
+one argument goes before the operators, the other after.
+But for instance, for \code{a[i]}, one argument goes ``in the middle''
+of the operator.
+
+Using operators is really just shorthand for calling a function.
+When you write the following code:
+\begin{verbatim}
+    if ( a1 == a2 ) cout << "They are equal!";
+\end{verbatim}
+it actually gets translated to
+\begin{verbatim}
+    if (operator==(a1, a2)) operator<< (cout, "They are equal!");
+\end{verbatim}
+If you wanted, you could directly write the second version in your code.
+The reason you should not do so is that it would be much harder to read.
+In a sense, operator overloading is just what some people call
+``syntactic sugar:'' parts of the programming language that do not
+really add functionality,
+or even necessarily good coding practices (like code reuse),
+but just make your code look prettier. 
+For instance, suppose that \code{x,y} are variables of some class you
+have written yourself. Something like 
+\begin{verbatim}
+if (x > 0) y++;
+   else if (x == 0) y = 0;
+        else y --;
+\end{verbatim}
+is much easier to read than
+\begin{verbatim}
+if (isGreater(x,0)) addOne(y);
+   else if (equals(x,0)) set(y,0);
+        else subtractOne(y);
+\end{verbatim}
+or
+\begin{verbatim}
+if (x.isGreater(0)) y.addOne();
+   else if (x.equals(0)) y.setEqual(0);
+        else y.subtractOne();
+\end{verbatim}
+
+The ``long version'' of operator names
+(such as \code{operator== (a1, a2)} in our earlier example)
+does tell you how to overload operators in general:
+all you need to do is to overload a function whose name is the word
+\code{operator}, followed by the operator itself.
+For instance, if you want to overload the \code{*} operator to allow
+``multiplying'' a number by a string
+(and define it to mean concatenating that many copies of the string),
+you can do that as follows:
+\begin{verbatim}
+string operator* (int n, string x)
+{
+  string s;
+  for (int i = 0; i < n; ++i) s.append (x);
+  return s;
+}
+\end{verbatim}
+
+You could now write something like
+\code{cout << 5 * "Hello"} 
+or \code{cout << operator* (5, "Hello")}.
+
+\section{The \code{const} keyword}
+The \code{const} keyword is not directly related to operator
+overloading or copy constructors, but this is the context where it
+makes a lot of sense and becomes important for the first time in this
+class, so we have a discussion here.
+
+When you initially learned about passing parameters to functions by
+reference (with `\&`), the purpose was probably always so that the
+function could modify the content of the variable,
+and the modification would be seen by whichever other function had called it.
+But there is another reason to pass parameters by reference: 
+when you pass by value, a copy of your parameter is made,
+which involves calling the copy constructor 
+(see Section~\ref{sec:overloading:copy-constructors}).
+There are some dangers to this:
+if no copy constructor is implemented, the default is to make a shallow copy,
+and in some cases, that is not what you want to happen. 
+And if you do make a deep copy, that can be quite inefficient at times.
+To avoid ambiguities like this,
+when the types of your parameters are more complex
+(like \code{vector} or our own \code{ArrayList}, or later on in
+Chapter~\ref{chap:templates} generic/template types),
+it is often easiest to just pass by reference.
+
+But if you pass parameters by reference,
+then someone using your function might suspect that you intend to
+alter the object that is passed in, 
+even when that is not your intention. 
+The solution is to use the \code{const} keyword;
+not only does it \emph{tell} the user of your class that the function
+does not alter its argument,
+but the compiler will \emph{ensure} that you cannot alter it. 
+For instance, if you wanted to write a function \code{append} that
+appends one \code{ArrayList} at the end of another,
+its syntax would be as follows:
+
+\begin{verbatim}
+void ArrayList::append (const ArrayList & a2) {
+    //code
+}
+\end{verbatim}
+By adding \code{const}, you ensure that the code inside the function
+can not alter the value of \code{a2} or any of its fields. 
+If you tried to include code that alters \code{a2},
+the compiler would return an error.%
+\footnote{The exact meaning of ``altering'' \code{a2} is a bit subtle.
+  To be precise, when you use the \code{const} keyword,
+  you cannot make assignments to the member variables of \code{a2}.
+  But if \code{a2} has a field that is a pointer
+  (for instance, the internal array for the \code{ArrayList}),
+  we \emph{are} allowed to change what is stored at the memory
+  locations that the pointer points to.
+  This may at first seem unintuitive.}
+The main point of \code{const} is to make it clear to others using the
+function(s) what can and cannot happen to the parameters.
+
+Suppose that you are now implementing the \code{append} function,
+and as part of your implementation,
+you want to call some other member function on \code{a2}. 
+How is the compiler supposed to know that this function call will not
+suddenly result in changes to the member fields of \code{a2}?
+This is where the second use of \code{const} comes in.
+The syntax is like in the following example:
+
+\begin{verbatim}
+ArrayList::print () const {
+    //code
+}
+\end{verbatim}
+Say that we are defining a function to print the \code{ArrayList},
+which should not need to alter any member fields of the object.
+The \code{const} keyword now says that the function
+\code{printlist} will not change the member variables of the object on
+which it is called, that is, after it executes, the object will be in
+the same state. 
+
+There is a third use of the \code{const} keyword.
+Sometimes, it is useful for a function to return its result by
+reference.
+This is typically for the same (or similar) reasons as those which
+make you want to pass arguments by reference:
+(1) you want to allow the code that calls the function to modify the
+returned value, or
+(2) the  returned value is a complex object, and you do not want a copy
+constructor to be called for it.
+In the second case, you again want to make it clear that the returned
+object can/should not be altered.
+You do this by returning a \code{const} reference.
+
+All three uses are illustrated with the following example of the
+\code{get} function of a \code{map} implementation:
+% DK: the get function for maps has not really been defined here
+
+\begin{verbatim}
+const ValueType & Map::get(const KeyType & key) const;
+\end{verbatim}
+
+Because the key could be a complicated object,
+you want to pass it in by reference, but the \code{get} function
+should not modify it, so the key is passed in by \code{const} reference.
+The \code{get} function should also not modify the state of the map,
+so the whole function is declared \code{const}.
+Finally, the value associated with the key could be a complex object,
+so it is returned by reference;
+but unless we want someone to be able to modify it
+(and thus implicitly modify the map),
+we should return it by \code{const} reference.
+Notice that there are three objects around here:
+the key, the value, and the map.
+Each \code{const} refers to a different one among those three objects that
+may not be altered.
+
+Use the following as a guideline for when to mark things \code{const}
+and when to pass by reference:
+\begin{itemize}
+\item If a member function does not need to alter the object on which
+  it runs, then mark it \code{const}. It cannot hurt to do so,
+  and might help you, because you can now call this function from within a
+  context where the object is \code{const}.
+\item If you are passing around complicated objects, unless you see a
+  good reason to pass them by value, pass them by reference.
+\item If you are passing an object by reference only for this reason,
+  but not because the function you are writing is supposed to modify it,
+  then pass it by \code{const} reference.
+\item If you are returning an object by reference just because it is
+  complicated, but not because you want to be able to alter it,
+  then return it by \code{const} reference.
+\end{itemize}
+
+One more thing is worth mentioning about the \code{const} keyword,
+because it often confuses students:
+While the \code{const} keyword, applied to a member function,
+prevents you from changing \emph{member} variables of the object
+inside the function,
+it of course does not prevent you from changing local variables of the
+function, since they are not part of the object's state. 
+
+\section{Operator Overloading and Classes}
+By far the most frequent case for operator overloading is in the
+context of defining new classes.
+For instance, if you define your own class for complex numbers (as
+we will do below), you would want to overload the arithmetic operations,
+equality test, assignment, and a few others.
+And for almost any class you define, you will likely want to overload
+the assignment operator, the equality test \code{==}, and frequently
+also \code{<<} so that you can easily print it to the screen or a file,
+and do not have to write separate \code{print()} functions to
+print to \code{cout, cerr} and files.
+
+The syntax for operator overloading in classes is as follows.
+Suppose that we have declared a class \code{IntArray},
+which stores the size of the array and an array of integers internally.
+We now want to add some operators:
+\begin{verbatim}
+class IntArray {
+     // for binary operators
+     // pattern: [RETURNTYPE] operator[OPERATOR] ([RHS DATA])
+     // Example:
+     bool operator== (const IntArray& otherArray) const {         
+        if (this->size != otherArray.size) return false;
+        else (for int i = 0; i < size; ++i)
+             if (this->data[i] != otherArray.data[i]) return false;
+        return true;
+     }
+
+     int & operator[] (int index) {
+        return data[index];
+     }
+
+     // for unary operators
+     // pattern: [RETURNTYPE] operator[OPERATOR]
+     // Example:
+     IntArray & operator++ () {
+         // increment all entries in the data field.
+         for (int i = 0; i < size; ++i) data[i] ++;
+         return *this;
+     }
+
+     private:
+       int size;
+       int *data;
+}
+\end{verbatim}
+
+We can now write things like
+\begin{verbatim}
+IntArray firstArray, secondArray;
+// some computation to put data in the variables.
+if (firstArray == secondArray) ++firstArray;
+secondArray[0] = 0;
+\end{verbatim}
+as shorthand for
+\begin{verbatim}
+IntArray firstArray, secondArray;
+// some computation to put data in the variables.
+if (firstArray.operator==(secondArray)) firstArray.operator++;
+secondArray.operator[](0) = 0;
+\end{verbatim}
+
+Two small notes: first, why do we have \code{++} return \code{*this}?
+Could we have made the operator's return type void?
+We could, but then we could not write things like \code{cout << ++a},
+because the type of \code{++a} would be \code{void}.
+Second, why did \code{operator[]} return its result by reference?
+The reason is that we want to be able to overwrite it,
+as we do in the example.
+If we returned it by value, then overwriting would be impossible.
+
+One type of operator we frequently overload is the assignment operator,
+since we routinely want to write something like \code{x=y} for objects
+of our own newly defined class.
+A few interesting issues come up when you define assignment operators.
+Let us try to write one for our \code{class IntArray} above:
+
+\begin{verbatim}
+IntArray & operator= (const IntArray & otherArray) {
+    this->size = otherArray.size;
+    this->data = new int[this->size];
+    for (int i = 0; i < this->size; ++i)
+        this->data[i] = otherArray.data[i];
+    return *this;
+}
+\end{verbatim}
+
+We just copied over all of the data from \code{otherArray}.
+Why did we make the assignment operator's return type
+\code{IntArray\&} instead of \code{void}?
+The reason is the same as for the \code{++} operator earlier:
+it allows us to write a statement such as \code{a = b = c},
+which we routinely do with other types (like integers),
+and would therefore like to do for \code{IntArray} as well.
+For that reason, when we write \code{b=c},
+what is returned must also be of the type that can be
+assigned to \code{a}.
+
+However, there is something else we should think about with the code
+for the assignment operator.
+Our class \code{IntArray} has dynamically allocated data
+(here, an internal array), so when we write 
+\code{this->data = new int[this->size]}, we create a memory leak.
+We have to deallocate the old \code{data} object before making this
+assignment.
+So suppose that we added the statement \code{delete [] data}
+as the first line of our operator. Are we good now?
+Not quite. Think about what happens when we write the statement
+\code{a = a}.
+While this is not necessarily a very useful statement to write,
+you would not want it to break someone else's code because
+of \emph{your} wrong implementation of the operator. 
+What happens now is that first, you delete all the data inside
+\code{a}, then try to copy that (deleted) stuff into \code{a}.
+So you will just copy garbage, and likely get a segfault
+(if you are lucky) or really strange behavior.
+So you must first check that you are not assigning an object to itself;
+once you have ensured that, it is safe to deallocate the old data in
+the object you are assigning to,
+then copy over the data from the other object.
+This means we should also add a first line
+\code{if (this != \&otherArray)}.
+
+\section{Friend Access}
+Sticking with our integer array example, suppose that we wanted to
+implement an operator that multiplies all entries of the array with
+the same integer. We could do that as follows:
+\begin{verbatim}
+class IntArray { 
+  // other stuff
+  IntArray operator* const (int multiplier)
+    { 
+       IntArray newArray;
+       newArray.size = size;
+       newArray.data = new int[size];
+       for (int i = 0; i < size; ++ i)
+           newArray.data[i] = data[i] * multiplier;
+       return newArray;
+    }
+}
+\end{verbatim}
+Now, we can write code like \code{a*7} to multiply the entire object
+of type \code{IntArray} by 7. 
+(Again, this is shorthand for \code{a.operator*(7)}.)
+But what if we also wanted to write \code{7*a}?
+That would be shorthand for \code{7.operator*(a)},
+meaning that we would have to make our operator a member function of \code{int},
+which we are not allowed to do.
+So in this case, we will have to revert to the earlier method we saw
+of defining the operator not as a member function of \code{IntArray}:
+
+\begin{verbatim}
+IntArray operator* (int multiplier, const IntArray & oldArray)
+  { // same implementation }
+\end{verbatim}
+
+But now, we have another problem:
+our implementation accessed private data fields,
+and methods that are not member functions are not allowed to do that.
+(For the purpose of this discussion, we ignore the fact that we could
+instead use our assignment operator and the access to individual
+elements using \code{[]}. We are trying to learn something new here.)
+What can we do? We could just make the variables public,
+but that would completely defeat the idea of hiding variables that
+others do not need to see.
+What we would really like to do is say that these variables are still
+private, but we will make an exception just for this one particular
+function \code{operator*}.
+C++ has a mechanism for doing this:
+you declare a function a \code{friend} of a class, as follows:
+
+\begin{verbatim}
+class IntArray {
+   // other stuff
+   friend IntArray operator* (int multiplier, const IntArray & oldArray);
+}
+\end{verbatim}
+
+If we put this line in the definition of the class \code{IntArray},
+we can then write the exact code as above outside the class,
+and it does get access to private variables.
+Notice that the \code{friend} declaration had to be inside the class
+\code{IntArray}.
+That makes sense: only the class itself should be allowed to provide
+the privilege of accessing its private variables --- a function cannot
+just get access to private variables by declaring itself a friend of
+the class.
+
+
+Multiplying an array by a number is nice, but it is not a
+functionality that is often needed.
+The most frequent use of \code{friend} functions is for implementing
+the \code{<<} operator for output streams.
+The way you do this is as follows:
+
+\begin{verbatim}
+class IntArray {
+  // other stuff
+  friend ostream & operator<< (ostream & o, const IntArray & a);
+}
+
+ostream & operator<< (ostream & o, const IntArray & a)
+{ 
+  for (int i = 0; i < a.size; ++ i)
+      o << a.data[i] << " ";
+  o << "\n";
+  return o;
+}
+\end{verbatim}
+
+Since we wanted to access private data fields of \code{a},
+we declared \code{<<} a friend function of \code{IntArray}.
+Also, by now you should have gotten used to the idea of why we return
+an \code{ostream} here: it is so that we can write
+\code{cout << a << "Hello World"}
+with multiple \code{<<}.
+
+\subsection{Friend Classes}
+The following is not directly related to operator overloading,
+but since we are talking about \code{friend} functions,
+we should also talk about \code{friend} classes.
+Sometimes, you want to allow not just one function,
+but all functions of class X to access all private members of class A.
+To do so, you can simply declare X a \code{friend} class of A. 
+Just like with friend functions, the \code{friend} relationship must
+of course be declared in class A, not in X. 
+The code for declaring class X a friend of A is:
+
+\begin{verbatim}
+class A {
+  public:
+    friend class X;
+  private:
+    ...
+}
+\end{verbatim}
+
+This piece of code would ensure that any object of type X would be
+allowed to access all the private parts of any object of type A.
+
+\section{An Illustration: Complex Numbers}
+The following illustration shows in more detail how to actually code
+with operator overloading 
+(whereas the preceding discussion was perhaps a bit abstract). 
+
+We want to implement a class for complex numbers.
+Recall that complex numbers are of the form $a+\imath b$, where $a,b$ are
+real numbers, and $\imath$ is such that $\imath^2 = -1$.
+The addition of complex numbers is defined as expected:
+$(a+\imath b) + (c+\imath d) = (a+c)+\imath (b+d)$.
+
+We can use the following definition of a very basic \code{Complex}
+class: 
+
+\begin{verbatim}
+class Complex {
+  private:
+    double re, im;	
+  public:
+    Complex (double re, double im) {
+      this->re = re;
+      this->im = im;
+    }
+
+    Complex (const Complex & toCopy) {
+      // we add a copy constructor while we are at it.
+      // See the next section to learn about copy constructors.
+      this->re = toCopy->re;
+      this->im = toCopy->im;
+    }
+
+    Complex add (Complex other) const {
+      double reSum = re+other.re;
+      double imSum = im+other.im;
+      return Complex(reSum, imSum);
+    }
+
+    string toString() const {
+      return (""+re+ "+" +im+"i");
+    }
+}
+\end{verbatim}
+
+Now, we could add two \code{Complex} numbers and print the sum using
+the following code:
+\begin{verbatim}
+  Complex c1 = Complex(1.5,-3.2);
+  Complex c2 = Complex(1.1,1.3);
+  Complex sum = c1.add(c2);
+  cout << sum.toString() << endl;
+\end{verbatim}
+	
+While this works well, it is a little tedious to have to write
+function calls like \code{add()} and \code{toString()}. 
+This makes comprehending the code more difficult than it needs to be. 
+To get around this, we can use the idea of operator overloading we
+just saw.
+Instead of (or in addition to) having a function \code{add()},
+we overload the operator \code{+}, as follows:
+\begin{verbatim}
+  Complex operator+ (const Complex& other) const {
+      return add(*this, other);
+}
+\end{verbatim}
+		
+Now, we can perform the third line of the code above using the
+shortcut: 
+\begin{verbatim}
+   Complex sum = c1+c2;
+\end{verbatim}
+
+This is exactly equivalent to the previous segment,
+but is much easier to interpret.
+We overload a few more commonly used operators, to get a hang of it.
+
+\begin{verbatim}
+Complex operator- (const Complex & other) const {
+   double reDiff = re - other.re;
+   double imDiff = im - other.im;
+   return Complex(reDiff, imDiff);
+}
+
+Complex operator* (const Complex & other) const {
+   // look up multiplication of complex numbers if you do not remember it.
+   double reProd = re*other.re - im*other.im;
+   double imProd = re*other.im + im*other.re;
+   return Complex(reProd, imProd);
+}
+
+bool operator==(const Complex & other) const {
+   return (re==other.re && im== other.im);
+}
+
+bool operator!=(const Complex & other) const {
+   return !(*this == other);
+}
+
+bool operator< (const Complex & other) const {
+   double absSq = re*re+im*im;
+   double otherAbsSq = other.re*other.re + other.im*other.im;
+   return (absSq < otherAbsSq);
+}
+
+bool operator<= (const Complex & other) const {
+   double absSq = re*re+im*im;
+   double otherAbsSq = other.re*other.re + other.im*other.im;
+   return (absSq <= otherAbsSq);
+}
+
+bool operator> (const Complex & other) const {
+   return !(*this<=other);
+}
+
+bool operator>=(const Complex & other) const {
+   return !(*this<other);
+}
+\end{verbatim}
+
+With these definitions in place, we could now do arithmetic and
+comparisons on our nice \code{Complex} class. 
+In order to also be able to print them,
+we will overload the operator \code{<<}.
+Suppose that we did not already have the \code{toString()} function.
+Then, to stream out the complex number,
+we write the following simple function.
+
+\begin{verbatim}
+ostream & operator << (ostream &out, const Complex & c) {
+    out << (c.re+ "+" +c.im+"i");
+}
+\end{verbatim}
+
+Since we are accessing the private member variables,
+we need to make this operator a \code{friend} function of the class
+\code{Complex}, by putting the line
+
+\begin{verbatim}
+    friend otsream & operator<< (ostream &out, const Complex & c); 
+\end{verbatim}
+
+into the definition of \code{class Complex}.
+We can now write code including multiple \code{<<} 
+in one statement, as follows: 
+
+\begin{verbatim}
+  Complex c1 = Complex(1,2);
+  Complex c2 = Complex(5,7);
+  cout << c1 << " + " << c2 << " = " << c1+c2 << endl;
+\end{verbatim}
+
+\section{Copy Constructors}
+\label{sec:overloading:copy-constructors}
+When we started talking about classes and objects,
+we also mentioned constructors briefly.
+It is worth mentioning explicitly now that just like any other
+functions, constructors can be overloaded; i.e.,
+a single class can have many different constructors,
+so long as their signatures (number/types of arguments) are different.
+
+One type of constructor that is almost always very useful is a copy
+constructor, which gets another object of the same type,
+and ``copies'' its contents in some way.
+Its signature will usually be:
+
+\begin{verbatim}
+class A {
+   A (const A & otherA);
+}
+\end{verbatim}
+
+With a copy constructor, we can ``copy'' objects as follows:
+
+\begin{verbatim}
+    A *a1;
+    // some code to put stuff in a1.
+    A *a2 = new A(a1);
+    // a2 now contains a copy of a1.
+\end{verbatim}
+
+How much should a copy constructor copy?
+That is quite an interesting question, and depends on context. 
+One approach is to copy exactly the data fields of your object.
+This is called a \todef{shallow copy} and is what C++ produces as a
+default copy constructor if you do not write one yourself.
+However, sometimes, that is not what you want.
+For instance, in our example above of an integer array \code{IntArray},
+a shallow constructor would copy the \code{size} and \code{data} variables.
+Since \code{data} is a pointer, we would now have two objects whose
+\code{data} pointers point to the same memory.
+If we make an edit in one, it will edit the other.
+Perhaps that is what we want, and perhaps not.
+If it is not what we want, then what we wanted was likely to copy all
+of the contents of the array to a new location as well.
+In that case, we would be making a \todef{deep copy},
+and we have to write a copy constructor to do it correctly.
+Deep copies can involve a bit of work:
+for instance, for a linked list, you would have to make a copy of
+each element of the list, and link them all up correctly as you go along.
+Often, that is exactly what you want from a copy.
+So make sure you know exactly what you want to copy and why.
+Otherwise, you may get surprising results.
+
+To illustrate what can go wrong, suppose that for our \code{IntArray} above,
+we make a shallow copy, with the following implementation:
+\begin{verbatim}
+class IntArray {
+  // other stuff
+  IntArray (const IntArray & otherArray)
+    { size = otherArray.size; data = otherArray.data; }
+  ~IntArray ()
+    { delete [] data; data = NULL; }
+}
+
+int main (void)
+{
+  IntArray a1;
+  IntArray a2 (a1);
+  return 0;
+}
+\end{verbatim}
+
+This program will segfault.
+What happens is that \code{a2} will contain shallow copy of \code{a1}.
+When the program terminates, the destructors of both objects are
+called, to give them a chance to clean up their affairs before going
+away (e.g., the objects may want to store some data on disk).
+Suppose that \code{a1} gets destroyed first.
+Then, its \code{data} gets deleted, and is deallocated. 
+But the pointer \code{a2.data} still points to the location,
+and when \code{a2} gets destroyed,
+it tries to delete memory that has already been deallocated.
+When you debug this program, you would wonder why it segfaults in the
+line \code{return 0}, which seems rather innocuous.
+This type of subtle errors can show up in unexpected parts of your
+program, and is not infrequently caused by the wrong type of copy
+constructor.  
+
+Why are copy constructors so important?
+To answer that question, let us return to our earlier discussion of
+passing parameters by value vs.~passing them by reference.
+You recall that in this class, we have been doing much of our passing
+of parameters by reference,
+and then declaring them \code{const} to avoid them getting altered.
+So far, we have been a bit vague about ``passing around big objects,''
+and ``it is not clear what happens when you pass a complicated object''
+into a function as a parameter by value.
+Actually, it \emph{is} clear what happens.
+C++ generates code that initializes your local variable using a copy
+constructor. So when you have the following code:
+\begin{verbatim}
+int foo (A myAObject)
+  { ... }
+\end{verbatim}
+and you call \code{foo (b)}, what will happen is that \code{myAObject}
+gets initialized via copy constructor from \code{b}.
+
+Exactly the same thing applies when you have a function that returns
+by value vs.~one that returns by reference.
+When you return by value, the variable that you assign to
+(or the place where the return value is used) gets initialized by copy 
+constructor from what you return.
+
+In both of the preceding cases, 
+if the class \code{A} has a copy constructor that does exactly what
+you want, passing complex objects by value is perfectly fine,
+and your code should execute exactly as you expected
+(except it may be a bit inefficient to copy so many objects). 
+But if \code{A} makes a shallow copy when you needed a deep copy,
+or makes a deep copy when you needed a shallow one,
+then you could get very unexpected results.
+In particular, because \code{myAObject} is a local variable,
+it will be destroyed when \code{foo} ends.
+If \code{myAObject} were a shallow copy of --- say --- an
+\code{IntArray}, then the \code{data} of that \code{IntArray} would be
+deallocated.
+This would likely have terrible consequences elsewhere in the program.
+And remember: when you have not explicitly defined a copy constructor,
+C++ will generate a default one which performs a shallow copy.
+
+This type of issue is even more pronounced when you write
+templated/generic classes (as you will learn in Chapter~\ref{chap:templates}).
+In that case, sticking with our previous example, you would not even
+know what the class \code{A} is.
+Some users may use your function \code{foo} with classes that have a
+deep copy constructor,
+others with classes that have a shallow copy constructor. 
+Unless you are very sure that your function works equally well in both cases,
+it is much safer to simply pass parameters by reference,
+and side-step the use of a copy constructor altohgether.
+And that is why we have been advocating passing complex parameters by reference.
+
+\subsection{The Rule of Three}
+Now that we have discussed in depth what a copy constructor does,
+and when you should write one, we should ask:
+what about the assignment operator?
+Does it also need to be written?
+The answer is typically that if you need to write your own copy
+constructor (because you do not want the default shallow copy),
+then you will virtually always also want your own assignment operator.
+The reason is that when you need a deep copy from your copy constructor,
+then a deep copy is probably the ``right'' way to copy objects of your
+class. 
+Then, an assignment such as \code{a = b} should probably also make a
+deep copy, as it would be very surprising for a user that assignment
+does not do the ``right'' thing.
+
+And for that matter, if you need a deep copy, it is virtually always
+because there is some dynamic memory allocated inside your object.
+Then, you should also have a destructor which deallocates that memory.
+The rule of thumb that we can derive is then the following (sometimes
+called the ``Rule of Three''): If you implement one out of the
+following three, then you almost always need to implement all three of
+them:
+
+\begin{itemize}
+\item Copy constructor
+\item Assignment operator
+\item Destructor
+\end{itemize}

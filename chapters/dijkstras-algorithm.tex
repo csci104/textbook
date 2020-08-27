@@ -1,0 +1,423 @@
+Earlier on, we looked at the problem of finding shortest paths in
+graphs, and used Breadth First Search (BFS) to solve this problem.
+At the time, our graphs did not have any edge costs or weights.
+The task gets a little more interesting when there are edge costs:
+then, the equivalent algorithm is called \todef{Dijkstra's
+  Algorithm}\footnote{after Edsger Dijkstra, one of the key pioneers
+  of the field of computer science}.
+
+Dijkstra's algorithm is the right choice when all we are given is the
+graph with its edge costs/weights. But often, there is more
+information, such as geography, which can be used to guide a
+shortest-path search to speed it up. The improved version of
+Dijkstra's Algorithm taking advantage of extra information is called
+$A^*$ search, and is particularly important in the field of Artificial
+Intelligence.
+
+\section{Dijkstra's Algorithm}
+
+As we said, we now assume that each edge $e=(v,w)$ of our graph has a
+cost (or length)  $c_e = c[v][w] \geq 0$.\footnote{When edges can have
+  negative costs, things get a bit more complicated. Dijkstra's
+  Algorithm doesn't work any more, but a somewhat slower algorithm due
+  to Bellman and Ford does; you'll likely learn that one in CS270.}
+First, we might just try to run BFS. But that's clearly not correct,
+as we can see from Figure~\ref{fig:dijkstra}.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=1cm,arrowsize=0.1 3}
+\pspicture(0,0)(4,4)
+
+\cnodeput[fillstyle=solid,fillcolor=lightgray](0,0){u}{$u$}
+\cnodeput(1,1){v1}{$v_1$}
+\cnodeput(2,2){v2}{$v_2$}
+\cnodeput(3,3){v3}{$v_3$}
+\cnodeput(4,0){w}{$w$}
+
+\ncline{->}{u}{v1} \naput{1}
+\ncline{->}{v1}{v2} \naput{1}
+\ncline{->}{v2}{v3} \naput{1}
+\ncline{->}{v3}{w} \naput{1}
+\ncline{->}{u}{w} \naput{10}
+\ncline{->}{v2}{w} \naput{6}
+
+\endpspicture
+\end{center}
+\caption{An example with edge costs in which BFS does not find the
+  shortest path from $u$ to $w$. \label{fig:dijkstra}}
+\end{figure}
+
+When we process $u$ (the start node), we add $v_1$ and $w$ to the
+queue. We next process $v_1$, and add $v_2$. 
+But when we process $w$, we are done with it, and never revisit its
+distance label. So we think that it is at distance 10 from $u$, when
+it really is at distance $4$.
+
+The mistake we are making here is that processing $w$ is
+premature. The node $v_2$ is a much better candidate to explore next,
+because it is closer to $u$; the fact that it is closer means that it
+may lie on an actual shortest path from $u$ to $w$ (as it does here),
+so we shouldn't conclude anything about the distance from $u$ to $w$
+until we've made sure that there isn't another, shorter, path.
+
+What this suggests is that nodes shouldn't just be stored in a
+queue. When a newly added node --- like $v_2$ in our example --- is
+closer to $u$, then it should be allowed to jump ahead of other nodes
+and be processed before them. But we've already seen a data structure
+built exactly for this purpose: a Priority Queue. So Dijkstra's
+Algorithm is obtained pretty much exactly by replacing the Queue in
+the BFS algorithm with a Priority Queue. Beyond that change, we just
+need some small modifications, mostly to take care of the fact that
+the estimated distance of a node may be updated multiple times. 
+For instance, in our example in Figure~\ref{fig:dijkstra}, when we
+explore $v_2$, we update our distance estimate for $w$ to 8 instead of
+10, but we later update it to 4, which is the final value.
+The more formal algorithm we get is as follows:
+
+\begin{verbatim}
+int d[n];     // will store distances from u
+int p[n];     // will store predecessors of nodes on shortest paths from u
+int c[n][n];  // contains the costs of edges
+
+void Dijkstra (int u) {
+  bool visited[n] = {false};  // no node is visited yet.
+  PriorityQueue<int> pq ();  
+     /* empty priority queue to start. We assume that the priority queue
+        always returns the element v with smallest d[v] value, 
+        and can deal with updating the d[v] value for an element. */
+
+  visited[u] = true; d[u] = 0;
+  pq.add (u);
+  while (!pq.isEmpty()) {
+     int v = pq.peek();
+     pq.remove ();
+     for (all nodes w with an edge (v,w) in E) 
+         if (!visited[w] || d[v] + c[v][w] < d[w]) { // found a shorter path to w
+            d[w] = d[v] + c[v][w];
+            p[w] = v;
+            if (!visited[w]) 
+               {
+                 visited[w] = true;
+                 pq.add(w);
+               }
+            else pq.update(w);
+         }
+   }
+}
+\end{verbatim}
+Notice the strong similarity to the BFS algorithm.
+The main change is the we use a priority queue instead of a queue, and
+that we have an additional condition that allows us to process a node
+$w$: not only when the node hasn't been visited at all, but also when
+we found a strictly shorter distance to get to $w$.
+In the latter case, the node will already be in the priority queue, so
+instead of adding it, we need to update the associated value.
+
+When we first learned about Priority Queues (in
+Chapter~\ref{chap:priority-queues}), we didn't discuss how to update
+an entry after its priority has changed. It's pretty clear that
+when its priority gets higher (i.e., its distance gets smaller), we
+should trickle the element up. And when the priority gets smaller, we
+should trickle it down. The not-so-obvious thing is how we find it in
+the heap in the first place, so we can trickle it up or down.
+A linear search through all elements would take $\Omega(n)$, and thus
+completely defeat the purpose of using a heap in the first place.
+The most obvious way to solve this problem is to store somewhere
+(e.g., in the \code{struct} for a node of the graph) an integer
+index describing where in the heap the element is located. Then, any
+time two elements swap positions in the heap, we can update their
+entries, at an additional constant cost. 
+If we don't like the idea of storing heap information in a node's
+\code{struct} (since it's really not part of the node's description,
+but part of the algorithm), we could instead have another array inside
+the Priority Queue: that array tells us for each of the nodes (in
+their original ordering in the graph) where it is located in the
+heap. Either way, it is easy to implement a lookup operation so that
+we only incur a constant times as much cost for each step.
+
+The correctness proof for Dijkstra's Algorithm would use induction
+over the iterations of the \code{while} loop. 
+It requires a bit more care in the formulation
+of a loop invariant, and you may see it in CSCI 270 (or CSCI 570 or
+670, if you take it). We won't go over it here, even though it's not
+all that difficult.
+
+The running time analysis gets a little more interesting than for BFS. 
+The \code{remove()} and \code{add()} operations now both take
+$\Theta(\log n)$ time (while \code{peek()} is still $\Theta(1)$).
+So the content of the \code{for} loop takes time $\Theta(\log n)$, and
+since it executes $\Theta(\mbox{out-degree}(v))$ times, the total time
+of the \code{for} loop is $\Theta(\mbox{out-degree}(v) \log n)$.
+This in turn gives us that the stuff inside the \code{while} loop
+takes time $\Theta((1+\mbox{out-degree}(v)) \cdot \log n)$, which we
+now have to sum up over all nodes $v$, as usual:
+\[
+\sum_v \Theta((1+\mbox{out-degree}(v)) \cdot \log n)
+\; = \; \Theta(\log n \cdot (\sum_v 1 + \sum_v \mbox{out-degree}(v)))
+\; = \; \Theta(\log n \cdot (n+m)).
+\]
+For Dijkstra's Algorithm, even though in principle, we could have the
+case $m < n$ just like we could for BFS, people usually ignore the $n$
+part of $n+m$, and simply describe the running time as $\Theta(m \log n)$.
+Not quite linear time, but it's still quite fast, and a pretty cool
+application of priority queues. In fact, Dijkstra's Algorithm and
+$A^*$ search are really the main reason computer scientists
+need to care about priority queues.
+
+\subsection{Fibonacci Heap Implementation}
+We should also mention here that there is a data structure called
+\todef{Fibonacci Heap} which allows for a faster implementation of
+Dijkstra's Algorithm. It's based on heaps, but changes them up quite a
+bit. We frequently teach it in CSCI 670. The upshot is that while the
+\code{remove} operation still takes $\Theta(\log n)$, the
+\code{insert} and \code{update} operations run in \emph{amortized}
+time $O(1)$. We have alluded briefly to amortization before: it means
+that while the \emph{actual} worst-case time of the operations could
+be worse, whenever an operation takes longer, it is always preceded by
+several cheaper operations, so that the average time is faster.
+Here, the average is not taken over any randomness. 
+Even if we have a worst-case sequence of operations, for instance, if
+there is an $\Omega(\log n)$ update operation, that means it must have
+been preceded by $\Omega(\log n)$ operations with time $O(1)$. Thus,
+the average of those times will work out to $O(1)$.
+
+An easier example we have seen earlier is the use of a \code{vector}
+data structure for implementing a stack. 
+When the size of a vector doubles, pushing an element on the stack
+takes time $\Omega(n)$, even though it is normally constant. 
+But since it only happens every $\Omega(n)$ operations, the
+average time for pushing elements is 
+$1/n \cdot (n \cdot O(1) + 1 \cdot \Theta(n)) = O(1)$.
+
+Once you have \code{update} (and also \code{insert}) in $O(1)$ time,
+the running time analysis can be improved. Each node is inserted and
+removed from the priority queue once, which takes a total of $\Theta(n
+\log n)$. Each node's value is updated at most once per incoming edge,
+so the total number of \code{update} operations is $O(m)$, and they
+each take time $O(1)$. Thus, the running time of Dijkstra's Algorithm
+with a Fibonacci Heap is $O(m + n \log n)$, which is quite a bit
+faster when the graph is not sparse (has more than a linear number of
+edges). 
+
+Implementing a Fibonacci Heap is quite a lot of work, and it takes
+quite a lot of overhead. But for large enough graphs --- maybe beyond
+100,000 or 1,000,000 nodes --- a Fibonacci Heap implementation will
+actually speed up Dijkstra's Algorithm in practice as well.
+
+\section{$A^*$ Search}
+
+If no additional information is available to guide the search, then
+Dijkstra's Algorithm is optimal. But often, there is more information
+available, and a clever algorithm should use it.
+For instance, imagine that you are planning the fastest route to drive
+from USC to LAX. While there may be different paths that you would
+need to explore, you'd likely not first try routes that go to downtown
+LA and Pasadena. Maybe with enough traffic or constructions, that
+would in the end turn out best, but it shouldn't be the first thing to
+explore. Let's explore that with an example, shown in Figure~\ref{fig:a-star}:
+
+\begin{figure}
+\begin{center}
+\psset{unit=2cm,arrowsize=0.1 3}
+\pspicture(-2.5,-1.2)(7,2)
+
+\cnodeput[fillstyle=solid,fillcolor=lightgray](0,0){s}{$s$}
+\cnodeput[fillstyle=solid,fillcolor=lightgray](5,0){t}{$t$}
+\cnodeput(1,0){a}{$a$}
+\cnodeput(2,0){b}{$b$}
+\cnodeput(1,1){c}{$c$}
+\cnodeput(3,1){d}{$d$}
+\cnodeput(3,2){e}{$e$}
+\cnodeput(4,1){f}{$f$}
+\cnodeput(-1,0){g}{$g$}
+\cnodeput(0,-1){h}{$h$}
+\cnodeput(-2,0){i}{$i$}
+
+\ncline{-}{s}{a} \naput{1}
+\ncline{-}{a}{b} \naput{1}
+\ncline{-}{b}{c} \nbput{1.4}
+\ncline{-}{s}{c} \naput{1.4}
+\ncline{-}{c}{d} \naput{2}
+\ncline{-}{c}{e} \naput{2.2}
+\ncline{-}{d}{e} \naput{1}
+\ncline{-}{e}{f} \naput{1.4}
+\ncline{-}{f}{t} \naput{1.4}
+\ncline{-}{s}{g} \nbput{1}
+\ncline{-}{s}{h} \naput{1}
+\ncline{-}{g}{i} \nbput{1}
+\ncline{-}{i}{h} \nbput{2.2}
+
+\endpspicture
+\end{center}
+\caption{An example to illustrate using $A^*$ search.\label{fig:a-star}}
+\end{figure}
+
+Suppose that in the example of Figure~\ref{fig:a-star}, we want to
+find a path from $s$ to $t$. 
+The distances are roughly the Euclidean distances of the nodes.
+
+Dijkstra's Algorithm, starting from $s$, would begin by putting $a, c,
+g, h$ in the priority queue. It would next process, say, $a$, and add
+$b$. Next would be $g$ and $h$. This seems like a bit of a waste. It's
+pretty clear to us looking at the figure that going to $g$ or $h$ is
+very unlikely to help us get to $t$ fast. After all, they are further
+from $t$ than $s$ itself. It may still be the right move, for
+instance, if we added a long edge from $g$ to $t$, and removed the
+edge from $f$ to $t$. But looking at things right now, exploring $b$
+first looks much more promising, and probably also $c$. That's because
+they are closer to the target (in terms of straight-line distance, not
+graph distance), which suggests that we should try them first.
+
+This idea --- estimate how far a node is from the target and use that
+in deciding which node to explore next --- is the central idea of
+$A^*$ search. More formally, $A^*$ needs an \todef{underestimating
+  distance heuristic} $h(v)$ defined on nodes $v$. The important
+property is that $h(v) \leq d(v,t)$, i.e., the estimated distance to
+the target \emph{must always be no more than the real distance}.
+In our example, if we assume that the numbers written on the edges are
+Euclidean distances, then the straight-line distances are always no
+more than the shortest-path distances, which have to take a sequence
+of multiple edges.
+
+The definition of the $A^*$ algorithm is now exactly the same as
+Djkstra's algorithm, except the priority of each node $v$ in the
+priority queue is $d[v] + h(v)$. Here, $d$ is the distance estimate,
+as before. So notice that the distances are still updated to the same
+value, and we only change the priorities for the priority queue, i.e.,
+the order in which nodes are explored. Let's look at three natural
+examples of distance heuristics if we search for paths for nodes
+embedded in the Euclidean plane, as in our example:
+
+\begin{enumerate}
+\item $h \equiv 0$. This is clearly an underestimate. Unfortunately,
+  it doesn't help us much. In fact, you will notice that we exactly
+  get Dijkstra's Algorithm back in this case.
+\item $h(v) = d(v,t)$, i.e., $h(v)$ is the actual shortest-path
+  distance from $v$ to $t$. This would be an extremely accurate
+  heuristic --- in fact, the $A^*$ search algorithm would find the
+  shortest path directly, without any wrong turns ever. The downside
+  is that computing $h(v)$ reduces back to the same problem we are
+  trying to solve in the first place: finding a shortest path. So the
+  problem with this heuristic is that it takes such a long time to
+  compute that it is not useful.
+\item $h(v) = \Norm[2]{v - t}$, i.e., the straight-line distance from
+  $v$ to $t$. That is a pretty good heuristic, and fast to
+  compute. For extra illustration, we will work through the example
+  from Figure~\ref{fig:a-star} with this heuristic.
+\end{enumerate}
+
+The upshot to remember is that you want $h$ to be: (1)
+underestimating, (2) fast to compute (much faster than the
+shortest-path search), and (3) as close to the actual distance as you
+can be.
+
+Let's see what $A^*$ search will do on the example from
+Figure~\ref{fig:a-star}. Let's estimate the distances to $t$ from the
+different nodes as follows (for exact values, use Pythagoras): 
+
+\begin{center}
+\begin{tabular}{ l | l | l | l | l | l | l | l | l | l | l }
+s & t & a & b & c & d & e & f & g & h & i \\ \hline
+5 & 0 & 4 & 3 & 4.1 & 2.2 & 2.8 & 1.4 & 6 & 5.1 & 7\\ \hline
+\end{tabular} 
+\end{center}
+
+\dkcomment{Note to self: the numbers in the graph and in the text
+  below may not be quite consistent. Check!}
+
+We start with just $s$. When we process it, we add to the priority
+queue the nodes $a$ with priority $1+4=5$, $c$ with priority $1.4+4.1
+= 5.5$, $g$ with priority $1 + 6 = 7$, and $h$ with priority $1 + 5.1
+= 6.1$. So we next explore $a$ and add $b$ with priority $(1+1) + 3 =
+5$. (We can see here that it is on the straight line from $s$ to $t$.)
+So the next node to be explored is $b$, and we will not update the
+priority of $c$, as the new path is longer.
+The next node extracted from the priority queue is $c$, even though
+its edge from $s$ is longer than those to $g$ and $h$: this is where
+$A^*$ is noticeably different.
+When processing $c$, we add $d$ with priority $(1.5+2)+2.2 = 5.7$ and $e$
+with priority $(1.5+2.5)+2.8 = 6.8$. 
+So we next explore $d$ --- notice that we are again trying to head
+straight for $d$. Processing $d$ does not add any useful information.
+Next will be $h$, because its priority is $6.1$. Processing $h$ adds
+$i$ with priority $(1+2.2)+7 = 10.2$ to the priority queue.
+So next we explore $e$, and add $f$ with priority $(4+1.4)+1.4 =
+6.8$. Notice that this is the same as $e$'s priority, because we are
+on a straight line to $t$. So we explore $f$ next, and find $t$ with
+priority $6.8$, and have found the shortest path.
+
+Looking back, we tried to take straight routes as much as possible,
+but had to take some detours. But compared to Dijkstra's Algorithm, we
+never processed $g$ or $i$, as they were in the wrong direction. 
+
+\subsection{The 15-Puzzle}
+The context in which the $A^*$ algorithm is used most often is in
+planning in Artificial Intelligence. When planning a sequence of
+actions to solve a puzzle (either a toy puzzle like Rubik's Cube, or a
+real-world task that involves multiple moves), we can think of the
+states of the world as a graph. The algorithm has actions available to
+manipulate the world, and each action takes the world from one
+``state'' to another. The goal is to find a sequence of actions of
+minimum length or cost to get from a known start state to a desired
+end state.
+
+As an example, let us look at the well-known 15-puzzle. It is played
+on a $4 \times 4$ grid, with 15 tiles (numbered $1, 2, \ldots, 15$, or
+perhaps with drawings on them) that can slide horizontally or
+vertically. Since there is at any given time just one free spot, only
+the adjacent tiles can slide, into that open spot.
+Figure~\ref{fig:15-puzzle} shows an example of a possible start (or
+intermediate) state and the desired end state.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=1cm,arrowsize=0.1 3}
+\pspicture(-5,-1)(5,1)
+\rput(-3,0){
+\begin{tabular}{ | l | l | l | l | }
+\hline
+12 & 4 & 3 & 8 \\ \hline
+9  &   & 1 & 14 \\ \hline
+11 & 5 & 13 & 15 \\ \hline
+2  & 6 & 10 & 7 \\ \hline
+\end{tabular}}
+\rput(3,0){
+\begin{tabular}{ | l | l | l | l | }
+\hline
+1 & 2 & 3 & 4 \\ \hline
+5  & 6 & 7 & 8 \\ \hline
+9 & 10 & 11 & 12 \\ \hline
+13  & 14 & 15 &  \\ \hline
+\end{tabular}}
+\endpspicture
+\caption{An intermediate state and the desired final state of the
+  15-puzzle.\label{fig:15-puzzle}}
+\end{center}
+\end{figure}
+
+In order to model the 15-Puzzle to make it amenable to graph search,
+we think of any state of the board as a node. So the graph has $16!$
+nodes, which is a lot. We can't even generate the entire graph in
+memory. There is an edge between two states if one can get from one to
+the other by sliding just one tile. Edges are by nature undirected, as
+one can revert a move by sliding the tile back to where it came from.
+Since we are only counting the number of moves, the cost of each edge
+is 1. Again, this technique --- find the right state space to build a
+graph --- is very common in applying graph search.
+
+Because all edges have cost 1, we could apply BFS. But that takes time
+$\Theta(n+m)$, and we just realized that $n = 16!$, which is a
+lot. Therefore, using $A^*$ search is pretty much a necessity here.
+We want to guide the search towards states in which tiles are in their
+final position, or close to it. The simplest heuristic $h$ for this is
+to look at each tile in isolation, and count how far it is from its
+destination, adding the number of rows and columns. (This is called
+the Manhattan Distance between the two positions, or $L_1$ distance,
+and written as $\Norm[1]{y-x}$.) Now, we add this over all tiles to
+get $h$. The reason this is an underestimating heuristic is that each
+move can only move one tile by one position, so it will take at least
+this many moves to get to the final position. 
+Better heuristics are known, and in fact, many research papers have
+been written about good $A^*$ heuristics for the 15-Puzzle and other
+puzzles. 

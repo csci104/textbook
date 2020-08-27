@@ -1,0 +1,755 @@
+Returning to Search Trees, we will now learn about a different way to
+keep them balanced, sort of. Splay Trees are interesting, in that they
+do not explicitly balance the tree or limit its height (like B trees,
+Red-Black Trees, or AVL Trees). Instead, they perform an operation called
+``splaying'' (``to splay'' means ``to spread'') with each \code{add},
+\code{remove}, or \code{get} 
+operation. The goal of splaying is to move the most recently accessed
+key to the root of the tree, by performing a sequence of rotations.
+In the process, almost as a side effect, the tree ``tends to'' get
+more balanced. This is not always guaranteed, but instead, what
+happens is that when one operation is really expensive, it tends to
+improve the tree a lot, and must have been preceded by a lot of
+cheaper operations. In other words, we will be able to establish a
+good \emph{amortized} time of $O(\log n)$ per operation, even though
+the \emph{worst-case} time is actually $\Theta(n)$.
+
+\section{Self-organizing Data Structures}
+Why would we set an explicit goal of moving the most recently accessed
+key to the root? It's so that if we search for the same key again in
+the near future, it will still be at (or near) the root, and thus
+found much faster than the ``typical'' time. The justification for
+doing this is that memory accesses are often ``local:'' if a
+particular item was recently accessed, it is much more likely that the
+same item will be accessed again in the near future. 
+Similarly, if a memory location was recently accessed, it is much more
+likely that a \emph{nearby} memory location will be accessed next.
+Why is this? Think about pieces of code like the following:
+
+\begin{verbatim}
+mymap[key].field1 = value1;
+mymap[key].field2 = value2;
+mymap[key].field3 = value3;
+
+for (i = 0; i < n; i ++) a[i] = a[i]*2;
+\end{verbatim}
+
+In the first three lines, we update three fields of the value stored
+in \code{mymap} associated with \code{key}. This is perfectly normal
+code, and it will access the same \code{key} three times. 
+In the final line, we do what we do very often: go through an array
+one by one. So we will access consecutive memory locations.
+
+Researchers have done extensive studies and found that normal programs
+have a lot of such locality. Thus, it makes sense to design data
+structures that make use of this locality to give better access times
+in practice than in the worst case. Data structures that get
+reorganized in response to \emph{queries} (as opposed to just
+insertions or deletions) are called \todef{self-organizing data
+  structures}. There are a number of examples, and Splay Trees are
+among the most important.
+
+Another classic example is a linked list in which the most recently
+accessed element is always brought to the head of the list next. 
+One can show (the proof is not completely trivial, and often covered
+in graduate algorithms classes) that for any sequence of operations,
+following this procedure uses at most twice as many computation steps
+as the best one could do with a linked list if one were given the whole
+future sequence of element accesses in advance.\footnote{Of course,
+  you are still much better off using a better \code{map} data
+  structure than linked lists.} As such, this is a
+classic example of the analysis of \todef{online algorithms}. 
+
+Perhaps the most important and prominent ``data structure'' for
+dealing with locality is the cache. The motivation for using a cache
+(which all computers nowadays do) is that really fast memory is
+expensive, while slower memory is much cheaper. So we would like to
+keep in that fast memory the data items that we need to access
+frequently, or in the near future. Of course, we don't know which
+items will be accessed in the future. But locality tells us that items
+that were accessed recently, and items that are close to ones that
+were accessed recently, are more likely to be accessed in the near
+future. There are a number of cache replacement strategies to exploit
+this general idea, and you can learn more about them in computer
+architecture classes.
+
+\section{The Splay Tree Operations}
+
+The implementations of the standard operations \code{add},
+\code{remove} and \code{get} are exactly the standard implementations
+of Binary Search Trees. The only difference is that after the standard
+operation is executed, the \code{splay} operation (defined below) is
+called. Spelled out in more detail, they are as follows:
+
+\begin{description}
+\item[\code{get(key):}] Find the key by comparing it to the key in
+  the current node, and going left or right (or finding it right
+  there), depending on whether it was smaller, larger, or equal to the
+  node's key. If they search terminates at a \code{NULL} pointer, the
+  key was not in the tree. Let $x$ be the last non-\code{NULL} node
+  visited by the search (i.e., either the node containing the key, or
+  the parent of the \code{NULL} node). After the search terminates,
+  call \code{splay(x)}.
+\item[\code{insert(key,value):}] Search for the key, inserting it in
+  the place where the (unsuccessful) search terminated. (Or update the
+  value associated with the key in the existing node.) Either way, let
+  $x$ be the node now containing the given key. Call \code{splay(x)}.
+\item[\code{remove(key):}] Search for the key. If the key was found,
+  swap it with the successor key in the tree. Let $x$ be the leaf node
+  that contains the key (after the swap), and $p$ its parent. Delete
+  $x$ from the tree, and call \code{splay(p)}.
+  \dkcomment{Note to self: the successor is not always a leaf. Need to
+    fix this!}
+\end{description}
+
+The \code{splay} operation aims to move the given node $x$ to the root
+of the tree by a sequence of rotations. There are three cases which
+are slightly different based on which child of its parent $x$ is (and
+whether there is a grandparent). In the following, we let $x$ be the
+node to be moved to the root, $p$ its parent, and $g$ its grandparent,
+if any.
+
+\begin{enumerate}
+\item $x$ is the left child of $p$, and $p$ is the left child of
+  $g$. (Similarly if they are both right children.)
+
+In this case, the way to get $x$ into $g$'s position is to first make
+a right rotation of $p$ and $g$, and then a right rotation of $x$ and
+$p$. This looks as shown in Figure~\ref{fig:splay-left-left}.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(-9,-3.5)(9,3.5)
+\rput(-7,0){%
+\pstree{\Tcircle{g}}
+       {
+         \pstree{\Tcircle{p}}
+                {
+                  \pstree{\Tcircle{x}}
+                        {
+                        \pstree{\Tp}{\Ttri{$T_1$}}
+                        \pstree{\Tp}{\Ttri{$T_2$}}
+                        }
+                  \pstree{\Tp}{\Ttri{$T_3$}}
+                }
+         \pstree{\Tp}{\Ttri{$T_4$}}
+       }
+}
+
+\psline[doubleline=true]{->}(-1,1)(1,1) 
+\rput(0,2.5){Right Rotation($p$,$g$)}
+\rput(0,1.75){Right Rotation($x$,$p$)}
+
+\rput(7,0){%
+\pstree{\Tcircle{x}}
+       {
+          \pstree{\Tp}{\Ttri{$T_1$}}
+          \pstree{\Tcircle{p}}
+                {
+                  \pstree{\Tp}{\Ttri{$T_2$}}
+                  \pstree{\Tcircle{g}}
+                        {
+                        \pstree{\Tp}{\Ttri{$T_3$}}
+                        \pstree{\Tp}{\Ttri{$T_4$}}
+                        }
+                }
+       }
+}
+
+\end{pspicture}
+\caption{Case 1 of splaying: both $x$ and $p$ are left children.\label{fig:splay-left-left}}
+\end{center}
+\end{figure}
+
+After the two rotations, $p$ will have moved up two levels in the
+tree. We now recursively (or iteratively) continue with
+$\code{splay(x)}$, moving $x$ further up.
+
+Notice the perhaps mildly counter-intuitive fact that we first 
+rotated $x$'s parent and grandparent, rather than $x$ itself. 
+We could have done the rotation differently, rotating $x$ and $p$
+first. In that case, we would end up with $x$ at the root, with $g$ as
+its right child, and then $p$ as the left child of $g$. The way we
+described it is the way things are typically done for Splay Trees.
+
+\item $x$ is the right child of $p$, and $p$ is the left child of
+  $g$. (Similarly if $x$ is the left child of $p$ and $p$ is the right
+  child of $g$.)
+
+In this case, the way to get $x$ into $g$'s position is to first make
+a left rotation of $x$ and $p$, and then a right rotation of $x$ and
+$g$. This looks as shown in Figure~\ref{fig:splay-right-left}.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(-9,-3.5)(9,3.5)
+\rput(-7,0){%
+\pstree{\Tcircle{g}}
+       {
+         \pstree{\Tcircle{p}}
+                {
+                  \pstree{\Tp}{\Ttri{$T_1$}}
+                  \pstree{\Tcircle{x}}
+                        {
+                        \pstree{\Tp}{\Ttri{$T_2$}}
+                        \pstree{\Tp}{\Ttri{$T_3$}}
+                        }
+                }
+         \pstree{\Tp}{\Ttri{$T_4$}}
+       }
+}
+
+\psline[doubleline=true]{->}(-1,1)(1,1) 
+\rput(0,2.5){Left Rotation($x$,$p$)}
+\rput(0,1.75){Right Rotation($p$,$g$)}
+
+\rput(7,0){%
+\pstree{\Tcircle{x}}
+       {
+        \pstree{\Tcircle{p}}
+              {
+               \pstree{\Tp}{\Ttri{$T_1$}}
+               \pstree{\Tp}{\Ttri{$T_2$}}
+              }
+        \pstree{\Tcircle{g}}
+              {
+               \pstree{\Tp}{\Ttri{$T_3$}}
+               \pstree{\Tp}{\Ttri{$T_4$}}
+              }
+       }
+}
+
+\end{pspicture}
+\caption{Case 2 of splaying: $x$ is a right child of $p$, and $p$ is a
+  left child of $g$.\label{fig:splay-right-left}}
+\end{center}
+\end{figure}
+
+As before, after the two rotations, $p$ will have moved up two levels
+in the tree. We now recursively (or iteratively) continue with
+$\code{splay(x)}$, moving $x$ further up.
+
+\item $x$'s parent is the root of the tree.
+
+This is the easiest case: we simply rotate $x$ with its parent, as
+follows: 
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(-9,-3.5)(9,3.5)
+\rput(-7,0){%
+\pstree{\Tcircle{p}}
+       {
+        \pstree{\Tcircle{x}}
+             {
+              \pstree{\Tp}{\Ttri{$T_1$}}
+              \pstree{\Tp}{\Ttri{$T_2$}}
+             }
+        \pstree{\Tp}{\Ttri{$T_3$}}
+       }
+}
+
+\psline[doubleline=true]{->}(-1,1)(1,1) 
+\rput(0,1.75){Right Rotation($x$,$p$)}
+
+\rput(7,0){%
+\pstree{\Tcircle{x}}
+       {
+          \pstree{\Tp}{\Ttri{$T_1$}}
+          \pstree{\Tcircle{p}}
+                {
+                  \pstree{\Tp}{\Ttri{$T_2$}}
+                  \pstree{\Tp}{\Ttri{$T_3$}}
+                }
+       }
+}
+
+\end{pspicture}
+\caption{Case 3 of splaying: $x$'s parent is the root.\label{fig:splay-root}}
+\end{center}
+\end{figure}
+
+In this case, no recursive or iterative calls are needed, as $x$ has
+made it the root at the end.
+\end{enumerate}
+
+Before moving on to an analysis of the amortized worst-case time per
+operation, let's think a bit about how we could make a Splay Tree
+really unbalanced and deep, ideally turning it into just a linked
+list. Consider inserting the keys in the order $1, 2, 3, \ldots, n$.
+Whenever key $k$ is inserted, it is inserted as the right child of the
+root (which at that point contains the key $k-1$), and then rotated
+into the root. 
+This will eventually produce a linear structure with $n$ at the root,
+a left child of $n-1$, and so on, all the way down to 1. 
+Then, searching for the key $1$ will take
+$n$ steps. However, notice that to get to this point, we had to
+perform $n$ operations, each of which cost only $O(1)$, namely,
+insertions that were the right child of the root. We could have been a
+bit more careful in designing a bad case, so that the insertions were
+a bit more expensive. But as a general idea, producing an expensive
+operation requires a lot of preceding cheap operations.
+
+\section{An Example}
+To illustrate the splaying operation, consider the initial
+splay tree shown in Figure~\ref{fig:splay-example-initial}, and a
+\code{get(1)} operation:
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.5cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(-11,-7)(11,7)
+\rput(0,0){%
+\pstree{\Tcircle{7}}
+   {
+    \pstree{\Tcircle{6}}
+       {
+        \pstree{\Tcircle{5}}
+           {
+            \pstree{\Tcircle{4}}
+               {
+                \pstree{\Tcircle{3}}
+                   {
+                    \pstree{\Tcircle{2}}
+                        {
+                         \Tcircle{1}
+                         \Tn
+                        }
+                    \Tn
+                   }
+                 \Tn
+               }
+             \Tn
+          }
+         \Tn
+       }
+      \Tn
+   }
+}
+\end{pspicture}
+\caption{A degenerate example splay tree in which to look up key 1.\label{fig:splay-example-initial}}
+\end{center}
+\end{figure}
+
+As we perform splay operations to move the key 1 up to the root, the
+tree will gradually look as shown in Figure~\ref{fig:splay-example-one-up}.
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.5cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(-11,-7)(11,7)
+\rput(-11,0){%
+\pstree{\Tcircle{7}}
+   {
+    \pstree{\Tcircle{6}}
+       {
+        \pstree{\Tcircle{5}}
+           {
+            \pstree{\Tcircle{4}}
+               {
+                \pstree{\Tcircle{3}}
+                   {
+                    \pstree{\Tcircle{2}}
+                        {
+                         \Tcircle[fillstyle=solid,fillcolor=lightgray]{1}
+                         \Tn
+                        }
+                    \Tn
+                   }
+                 \Tn
+               }
+             \Tn
+          }
+         \Tn
+       }
+      \Tn
+   }
+}
+
+\psline[doubleline=true]{->}(-8.5,1)(-6.5,1) 
+
+\rput(-4,0){%
+\pstree{\Tcircle{7}}
+   {
+    \pstree{\Tcircle{6}}
+       {
+        \pstree{\Tcircle{5}}
+           {
+            \pstree{\Tcircle{4}}
+               {
+                \pstree{\Tcircle[fillstyle=solid,fillcolor=lightgray]{1}}
+                   {
+                    \Tn
+                    \pstree{\Tcircle{2}}
+                        {
+                         \Tn
+                         \Tcircle{3}
+                        }
+                   }
+                 \Tn
+               }
+             \Tn
+          }
+         \Tn
+       }
+      \Tn
+   }
+}
+
+\psline[doubleline=true]{->}(-1,1)(1,1) 
+
+\rput(4,0){%
+\pstree{\Tcircle{7}}
+   {
+    \pstree{\Tcircle{6}}
+       {
+        \pstree{\Tcircle[fillstyle=solid,fillcolor=lightgray]{1}}
+           {
+            \Tn
+            \pstree{\Tcircle{4}}
+               {
+                \pstree{\Tcircle{2}}
+                   {
+                    \Tn
+                    \Tcircle{3}
+                   }
+                \Tcircle{5}
+               }
+          }
+         \Tn
+       }
+      \Tn
+   }
+}
+
+\psline[doubleline=true]{->}(6.5,1)(8.5,1) 
+
+\rput(11,0){%
+\pstree{\Tcircle[fillstyle=solid,fillcolor=lightgray]{1}}
+    {
+     \Tn
+     \pstree{\Tcircle{6}}
+        {
+         \pstree{\Tcircle{4}}
+            {
+             \pstree{\Tcircle{2}}
+                {
+                 \Tn
+                 \Tcircle{3}
+                }
+             \Tcircle{5}
+            }
+          \Tcircle{7}
+       }
+   }
+}
+
+\end{pspicture}
+\caption{The tree after three splay steps, following a lookup of `1'.\label{fig:splay-example-one-up}}
+\end{center}
+\end{figure}
+
+Notice that while not perfectly balanced, this tree already looks much
+better than it did before. Next, in the resulting tree, we perform a
+\code{get(3)} operation, trying again to access the most
+expensive-to-access element. 
+Then, the splay operations result in the sequence shown in
+Figure~\ref{fig:splay-example-three-up}.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.5cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(-11,-7)(11,7)
+\rput(-10,0){%
+\pstree{\Tcircle{1}}
+   {
+     \Tn
+     \pstree{\Tcircle{6}}
+        {
+         \pstree{\Tcircle{4}}
+            {
+             \pstree{\Tcircle{2}}
+                {
+                 \Tn
+                 \Tcircle[fillstyle=solid,fillcolor=lightgray]{3}
+                }
+             \Tcircle{5}
+            }
+          \Tcircle{7}
+       }
+   }
+}
+
+\psline[doubleline=true]{->}(-5,1)(-3,1) 
+
+\rput(0,0){%
+\pstree{\Tcircle{1}}
+    {
+     \Tn
+     \pstree{\Tcircle{6}}
+        {
+         \pstree{\Tcircle[fillstyle=solid,fillcolor=lightgray]{3}}
+            {
+             \Tcircle{2}
+             \pstree{\Tcircle{4}}
+                {
+                 \Tn
+                 \Tcircle{5}
+                }
+            }
+          \Tcircle{7}
+       }
+   }
+}
+
+\psline[doubleline=true]{->}(3,1)(5,1) 
+
+\rput(10,0){%
+\pstree{\Tcircle[fillstyle=solid,fillcolor=lightgray]{3}}
+    {
+     \pstree{\Tcircle{1}}
+        {
+          \Tn
+          \Tcircle{2}
+        }
+     \pstree{\Tcircle{6}}
+        {
+          \pstree{\Tcircle{4}}
+             {
+              \Tn
+              \Tcircle{5}
+             }
+          \Tcircle{7}
+       }
+   }
+}
+\end{pspicture}
+\caption{The tree after looking up the key `3', and splaying it up.\label{fig:splay-example-three-up}}
+\end{center}
+\end{figure}
+
+So after just two operations chosen to be as expensive as possible
+each, we arrive at a fairly nicely balanced search tree. 
+
+\section{Analysis of the Amortized Running Time}
+For Splay Trees, the ``simpler'' type of analysis of just counting how
+many operations take how long will not work. We really do need the
+credit scheme here. To motivate the credit scheme we will use, we
+think a bit about what the really bad instances look like. They are
+characterized by being ``mostly path-like,'' meaning that many nodes
+have almost as many nodes below them in the tree as their parents. 
+In a nice and balanced binary tree, each node has roughly half as many
+descendants as its parent. In a pure path, each node has just one
+fewer descendant than its parent.
+
+When the tree has become very path-like, this is a sign that in the
+future, there may be potentially very expensive $\Theta(n)$ operations
+coming. So in that case, we would like to have a lot of credits stored
+up in the tree to pay for those operations. On the other hand, if the
+tree is already very balanced, we don't so much mind having few
+credits, as there are no expensive operations to be feared for a while
+(until bad inputs have made the tree degenerate again).
+
+There are of course many potential candidates of specific credit
+schemes that might capture this, and finding the right one that will
+work for a particular analysis is often an art form. 
+For Splay Trees, here is one that works well.
+For each node $v$ of the Splay Tree, let $n_v$ be the total number of
+descendants that $v$ has (i.e., children, grandchildren, and so on),
+including itself. We will maintain the invariant that at any time,
+each node $v$ has exactly $c_v = \Floor{\log_2 n_v}$ credits.\footnote{Why
+  $\log_2 n_v$, and not $n_v$, or $\sqrt{n_v}$, or something else?
+  Because when the inventors tried it, the $\log$ worked, and the
+  others didn't. As we said before, the invention of credit schemes is
+  a bit of an art form, or trial-and-error process. Though you will
+  see a bit of evidence for this choice later in the analysis.}
+(If at any point, a node has too many credits, we just throw them away.)
+So we need to think about what this means in terms of the cost of the
+operations, in terms of inserting credits into the system (where we
+have to pay extra), and in terms of using credits to pay for expensive
+operations.
+
+First, let's think about the searching part. When the node $v$ we
+terminate at is at height $h$ in the tree, the cost of the searching
+is $\Theta(h)$, and then the splaying costs another $\Theta(h)$. 
+This is true for each of \code{add}, \code{remove}, and \code{get}.
+We can lump the extra $\Theta(h)$ in with the cost for \code{splay},
+which we analyze in detail below. This just shows that we can ignore
+the other costs.
+
+The next thing we need to worry about is the fact that \code{add} and
+\code{remove} change the structure of the tree, and thus the values of
+$n_v$. This may change how many credits nodes need to have, and to
+maintain the credit invariant, we may have to pay extra with these
+operations. So let's look at these operations:
+
+\begin{description}
+\item[\code{remove:}] When we remove a key, the only way the tree
+  changes (until \code{splay} is called) is by taking away a node. 
+  Thus, for some nodes $v$, the value $n_v$ decreases by one, while
+  for the others, it stays exactly the same. Because the $n_v$ values
+  only decrease or stay the same, and all nodes had enough credits
+  before, they certainly still have enough credits now. (In other
+  words, \code{remove} operations really cannot hurt us.) We might
+  have to throw away some credits, but that does not cost anything.
+\item[\code{add:}] The situation is a bit more interesting when we add
+  a key. Now, for some nodes $v$ (all the ones on the path from the
+  root to the new leaf), the number of descendants $n_v$ has increased
+  by one. For some of these nodes, this may also lead to an increase
+  in the credit target $c_v = \Floor{\log_2 n_v}$, which means that we
+  have to insert one more credit for each of those nodes $v$.
+
+  How many such nodes $v$ could there be? First, notice that if you
+  look at the sequence of $n_v$ values as we traverse from the root to
+  a leaf, this sequence will be strictly decreasing, starting from
+  $n$, and ending at 1. An increase in $\Floor{\log_2 n_v}$ happens
+  exactly for nodes $v$ for which $n_v = 2^k-1$ for some $k$. 
+  But there can be at most $\log n$ possible values of $k$ 
+  (namely, $0, 1, \ldots, \Floor{\log_2 n}$) for which this is true,
+  and for each such $k$, there is at most one node on the path having
+  $n_v = 2^k-1$, because the $n_v$ decrease strictly. Thus, we have to
+  insert at most a total of $\log_2 n$ credits, and can ascribe a cost
+  of $O(\log n)$ to the \code{add} operation.
+
+  Looking at this argument, you can see a little bit why we chose
+  $\log n_v$ rather than $n_v$ or $\sqrt{n_v}$ as our credit target
+  function. Otherwise, we might have to insert too many credits in the
+  \code{add} step.
+\end{description}
+
+This leaves us with the \code{splay} operation, which is the most
+interesting/challenging part of the analysis. 
+We will consider any one of the \code{splay} steps, where a node $x$
+gets moved to the position formerly occupied by its grandparent $g$.
+Let $c_v$ be the credits of the nodes before this \code{splay}
+operation, and $c'_v$ the credits after the operation.
+What we will show is that the cost of one splay step, together with
+necessary credit rearrangements, can be paid for by spending some
+credits, with an additional cost of at most $3(c'_x-c_x)$ to be paid on
+top. (Here, $c'_x$ is the credit after just one double-rotation.)
+
+Now, when we sum up all of those extra costs, the $-c_x$ term in the
+next step always cancels out the $c'_x$ from the previous step. (This
+is called  ``telescoping series.'')
+Thus, we are left with an extra payment of $c^{\text{final}}_x - c_x$.
+At the end, the credit of the root is $\Floor{\log_2 n}$, while initially,
+$c_x = 0$. Thus, the total extra payment (beyond credit usage) is at
+most $O (\log n)$. Taking all of this together, once we have shown the
+claimed accounting for just one double-rotation, we have shown an
+upper bound of amortized $O(\log n)$ for all operations.
+
+\subsection{The Left-Left Case}
+So now, let's analyze what happens in the double-rotation steps. 
+First, let's look at Figure~\ref{fig:splay-left-left}. 
+Let $n_x, n_p, n_g$ be the number of descendants of the three nodes
+before the double-rotation, and $n'_x, n'_p, n'_g$ after the double
+rotation. 
+Similarly, let $c_x = \Floor{\log_2 n_x}, c'_x = \Floor{\log_2 n'_x}$,
+and the same for $p,g$.
+
+What do we know about the new values?
+Because $x$ becomes the root, we know that $n'_x = n_g$, so $c'_x = c_g$. 
+The total number of credits we have available before the
+double-rotation is 
+$c_x + c_p + c_g$, and after the double-rotation, we need to have
+$c'_x + c'_p + c'_g$ credits.
+So we need to add
+\begin{align}
+(c'_x + c'_p + c'_g) - (c_x + c_p + c_g)
+\; = \; c'_p + c'_g - (c_x + c_p)
+\; \leq \; 2 \cdot (c'_x - c_x), \label{eqn:splay:basic-credit}
+\end{align}
+because of the three nodes, $x$ is at the root after the
+double-rotation, and at the bottom before.
+We now distinguish two cases:
+
+\begin{enumerate}
+\item If $c'_x > c_x$, then as discussed above, we are willing to
+  incur an extra cost of $3(c'_x - c_x)$, of which $2(c'_x - c_x)$
+  pays for the credit insertion (and rearrangement), while the
+  remaining $c'_x - c_x \geq 1$ is enough to pay for the constant cost
+  of the actual double-rotation.
+
+  This is the case in which we cannot say too much about whether the
+  tree gets better or worse.
+\item The more interesting case is that $c'_x = c_x$. 
+  In that case, because $c'_x = c_g \geq c_p \geq c_x$, we get that
+  $c_x = c_p = c_g = c'_x$, while $c'_g, c'_p \leq c'_x$.
+
+  In fact, we will see next that $c'_g < c'_x$. 
+  The reason is that $x$ and its entire subtree ($T_1, T_2$) in the
+  original tree, and $g$ and its entire subtree in the final tree
+  ($T_3, T_4$) are disjoint 
+  (as you can see in Figure~\ref{fig:splay-left-left}).
+  Thus, $n_x + n'_g \leq n'_x$. 
+  But because $\Floor{\log_2 n_x} = \Floor{\log_2 n'_x}$, we get that
+  $n_x > \half n'_x$, so $n'_g < \half n'_x$, meaning that $c'_g < c'_x$.
+  Thus, we get that 
+\[ 
+(c'_p + c'_g) - (c_x + c_p)
+\; = \; (c'_p + c'_g) - (c'_x + c'_x)
+\; < \; (c'_x + c'_x) - (c'_x + c'_x)
+\; \leq \; 0.
+\]
+
+  Thus, by performing the double-rotation, we actually free up at
+  least one credit (without having to pay anything extra), which is
+  enough to pay for the double-rotation right there. 
+  This is the case where the tree structurally becomes better: 
+  when $c'_x = c_x$, that tends to 
+  imply that most of $g$'s initial subtree was actually below $x$, so the tree
+  was unbalanced before, leaning heavily to $x$'s side. The
+  double-rotation fixes this partially, moving $g$ further down and
+  $x$ further up.
+\end{enumerate}
+
+\subsection{The Right-Left Case}
+Next, we consider the case of Figure~\ref{fig:splay-right-left}. 
+We use the same notation as before. The calculation is exactly the
+same as before up to Equation~\eqref{eqn:splay:basic-credit}, and the
+first case of the subsequent case distinction (where $c'_x > c_x$) is
+also exactly the same. 
+
+The only slightly different argument happens in the case when $c'_x = c_x$.
+We still have $c'_x = c_g \geq c_p \geq c_x$ and 
+$c'_g, c'_p \leq c'_x$ in that case.
+Now, because $p$ and $g$ are the roots of disjoint subtrees of $x$
+(after the rotations), we get that $n'_x = 1 + n'_g + n'_p$, which
+means that at least one of $n'_p, n'_g$ must be strictly smaller than
+$n'_x/2$.
+For that node (let's say $p$), $c'_p \leq c'_x - 1$. 
+Then, we again get that
+
+\[ 
+(c'_p + c'_g) - (c_x + c_p)
+\; < \; (c'_x + c'_x) - (c'_x + c'_x)
+\; \leq \; 0,
+\]
+
+so the double-rotation again frees up at least one credit to pay for
+the operations. Again, this is the case where the tree structure
+improves. 
+
+\subsection{Child of the Root}
+Finally, we are left with the easiest case: when $x$'s parent was the
+root (see Figure~\ref{fig:splay-root}). 
+Now, the credits before the rotation are $c_x + c_p$, and after the
+rotation, they are $c'_x + c'_p$, where $c'_x = c_p$. 
+The difference is
+\[ (c'_x + c'_p) - (c_x + c_p)
+\; = \; c'_p - c_x
+\; \leq c'_x - c_x.
+\]
+
+So, similar to in the first case of each of the double-rotations
+discussed above, by inserting $3(c'_x - c_x)+1$ credits, we can cover
+all the required credit changes, and still have at least 1 credit left
+for the actual constant-time rotation operation. 
+(This applies even in the case $c'_x = c_x$, because of the added
+1.\footnote{Why didn't we do this ``add 1'' trick for the other cases?
+  Because there, we might have to add 1 for each step of the
+  \code{splay} operation, which would have cost too much. Here, we are
+  at the root, so the 1 only needs to be added once, which we can
+  afford for the analysis.})

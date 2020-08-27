@@ -1,0 +1,799 @@
+\section{The Basic Definitions and Examples}
+A \todef{graph} is a set of ``individuals'' and their ``pairwise
+relationships''. The individuals are called \todef{nodes} or
+\todef{vertices} (singular: \todef{vertex}), and sometimes also
+\todef{points} (mostly by mathematicians).
+The relationships are called \todef{edges} (or also \todef{arcs} if they
+are directed), and sometimes also \todef{lines}.
+
+Many things in the real world can be very naturally represented by
+graphs. Examples include: 
+\begin{itemize}
+\item Computer networks (including the Internet)
+\item Social networks (such as friendship, enemies, job supervision,
+  family ties, sexual contacts, crushes, $\ldots$).
+Notice that some of these relationships (such as friendship, enemies,
+or sexual contacts) are by definition undirected, i.e., automatically
+reciprocated, while others (job supervision, crushes) are not
+necessarily so. 
+\item Road systems or other transportation networks (train routes,
+  flights between cities, $\ldots$). Again, notice that some edges go
+  both ways (2-way streets), while others don't.
+\item Financial networks, such as investments between companies or
+  financial obligations, overlap among boards of directors, and
+  others.
+\item Supervision between different branches/entities of government.
+\item The WWW and other hypertext.
+\item Many more, including physical proximity, matches played between
+  sports teams, symbiotic or predator behavior between species,
+  reactions in biological/chemical systems.
+\end{itemize}
+
+Before getting too carried away and wanting to model everything as
+graphs, we should keep in mind that graphs only capture
+\emph{pairwise} relationships. 
+For example, suppose that you are trying to model a set of
+students (nodes), and whether they take classes together.
+There are three students, A, B, and C. If you have an edge between all
+three pairs $(A,B), (B,C)$, and $(A,C)$, that could mean that all
+three are in a class together, or that there are three different
+classes, one which $A$ and $B$ are taking, one which $B$ and $C$ are
+taking, and one which $A$ and $C$ are taking. A graph does not let you
+distinguish between these two real-world scenarios.
+If we really wanted to model the difference, there would be two
+different approaches. 
+\begin{enumerate}
+\item One would be to move from graphs to
+\todef{hypergraphs}: hypergraphs have \todef{hyperedges}, which may
+contain more than two nodes. Then, a hyperedge of $\SET{A,B,C}$ could
+capture that all three students are in the same class together.
+In most of your standard college classes (including here at USC),
+hypergraphs are not covered in depth; the main reason is that there are
+a lot of very beautiful and useful results about graphs, and most
+extensions to hypergraphs aren't nearly as useful or beautiful.
+\item A different way would be to include in our graph two completely
+  different types of nodes: students and classes. Then, we draw an
+  edge between a student node and a class node if the student is
+  enrolled in the class. We would not have any edges between students,
+  or between classes. This would completely capture the scenario we
+  are interested in. Such graphs (two different types of nodes, with
+  edges only between nodes of different types) are called
+  \todef[graph]{bipartite}. They are often very useful, and there are many
+  really interesting results about them. You may see some of them in
+  CS170, CS270, and possibly higher-level classes.
+\end{enumerate}
+
+In order to talk about graphs, we need to learn some terminology and
+agree on some notation\footnote{This list is of course far from
+  complete: also read up in the textbook for some more
+  terminology. You'll also likely learn much more in CS170 and CS270.}:
+\begin{itemize}
+\item The set of all nodes is usually denoted by $V$, and the set of
+  all edges by $E$. Their sizes are $n = \SetCard{V}$ and $m = \SetCard{E}$.
+  In talking about graphs, the use of $n$ and $m$ in this sense is
+  very standard, so you should avoid deviating from it.
+  Graphs are often denoted as $G=(V,E)$.
+\item Vertices are often named $u,v,w$, edges $e,e',f$.
+\item Edges can be \todef[edge]{directed} or \todef[edge]{undirected}. 
+  Undirected   edges model relationships that are automatically
+  reciprocated (such as being friends, siblings, married, in the same
+  class, or connected with a 2-way street). 
+  Directed edges model relationships that are not necessarily
+  reciprocated (such as having a crush on, being a parent of, being a
+  supervisor of, or being connected with a one-way street).
+  Directed edges are also frequently called \todef{arcs}.
+\item A graph in which all edges are undirected is an \todef{undirected
+    graph}. A graph in which all edges are directed is a
+  \todef{directed graph}. A graph that contains both types is sometimes
+  called a \todef{mixed graph}.
+\item To visualize graphs, we will often draw the nodes as circles (or
+  points or rectangles), and edges as lines (not necessarily
+  straight). When edges are directed, we draw them as arrows.
+\item When there is an undirected edge $(u,v)$ between nodes $u$ and
+  $v$, we call $u$ and $v$ \todef{adjacent} (think: neighbors).
+  When the edge is directed, people usually avoid the term
+  ``adjacent'' to prevent confusion.
+\item In an undirected graph, the \todef{degree} of a node $v$ (written
+  as $\text{degree}(v)$, or $\text{deg}(v)$, or sometimes just
+$d(v)$ or $d_v$) is the number of edges that $v$ is part of.
+In directed graphs, we usually carefully distinguish between the
+\todef{out-degree} (number of outgoing edges), denoted by
+$\text{outdegree}(v)$ (or $d_{\text{out}}(v)$ or $d^+(v)$),
+which is the number of outgoing edges,
+and the \todef{in-degree} (number of incoming edges), denoted by
+$\text{indegree}(v)$ (or $d_{\text{in}}(v)$ or $d^-(v)$).
+\end{itemize}
+
+When you do some basic calculations (counting), you see that a
+graph with $n$ nodes can have at most $n^2$ (or $n(n-1)$ or
+$n(n-1)/2$) edges, depending on whether we allow a node to have an
+edge to itself, and whether edges are directed or undirected.
+In any of these cases, the maximum number is $\Theta(n^2)$. 
+We call a graph with $\Theta(n^2)$ edges \todef{dense}, and a graph
+with much fewer than $n^2$ edges \todef{sparse}.\footnote{For this
+    class, the ``intuitive'' description will have to suffice. The
+    attentive student comfortable with big-$O$ notation will notice
+    that it does not make sense to speak for a single graph about the
+    number of edges being $\Theta(n^2)$, since the notation of
+    $O,\Omega$ are only defined for functions. We'd really be talking
+    about a \emph{family} of graphs, including arbitrarily large
+    graphs, and whose edge sets grow as $\Theta(n^2)$.
+    For ``sparse graphs'', we will keep it deliberately
+    underspecified. In different contexts, different definitions come
+    in handy. Sometimes, we may just mean that the number of edges is
+    \emph{not} $\Omega(n^2)$ (which we denote by it being $o(n^2)$
+    with a little $o$). In other contexts, we may actually want the
+    number of edges to be $O(n)$ or $O(n \log n)$ or $O(n^{1.5})$.}
+
+\section{Paths in Graphs}
+One of the most useful and central concepts in modeling the world with
+graphs is a \todef{path}: it captures one's ability to get from one
+node to another not just with one direct edge, but by following a
+\emph{sequence} of edges.
+The formal definition of a \emph{path} is a sequence of $k \geq 1$ nodes
+$v_1, v_2, \ldots, v_k$ such that for each $i$, there is an edge from
+$v_i$ to $v_{i+1}$ (directed or undirected).
+In this sense, a path exactly captures our ability to traverse
+multiple edges in sequence.
+Notice that we explicitly allow the case $k=1$, i.e., a node by itself
+is also a path. Even though this path is often not particularly
+interesting, it usually helps us avoid having to deal with special
+cases in proofs. 
+We will learn next lecture how to actually compute paths between
+vertices.
+
+As defined so far, a path may repeat the same node or edge multiple
+times. If we want to rule this out, we can talk about \todef{simple
+  paths}: a path is \emph{simple} if it does not contain the same node
+more than once.
+A \todef{cycle} (sometimes also called \todef{circuit}) is a path that
+starts and ends at the same node. 
+We say that two nodes $u$ and $v$ are \todef[nodes]{connected} if there is an
+undirected path between them. (There are similar definitions for
+directed graphs, but those terms are used less frequently.)
+Thus, two nodes are connected if it is possible to get from one to the
+other.
+
+An undirected graph is called \todef[graph]{connected} if every pair of
+vertices in the graph is connected.
+A directed graph is called \todef[graph]{strongly connected} if for every pair
+$u,v$ of vertices, there is a directed path from $u$ to $v$ and a
+directed path from $v$ to $u$.
+
+Paths between nodes are extremely useful in many settings.
+In road networks, they are the main concept that we need for any kind
+of route planning (MapQuest, Google Map driving recommendations, GPS).
+In computer networks, they are where packets are routed from one
+computer to another.
+In social networks, they tell us whether you are connected to someone
+else by a chain of friends. You'll probably find useful applications
+in most other examples of graphs we talked about.
+
+\section{The Abstract Data Type Graph}
+In implementing graphs, we want to again think of them as an abstract
+data type: the information that is stored (internally) as well as
+functions to interact with the data.
+Internally, we will need to store the nodes and the edges. 
+In both cases, we may want to associate some data with them.
+For nodes, this could be some information on a user of a social
+network, or a computer in a network, or an intersection on a road map.
+For edges, this may be the length or direction of a road, or the
+strength of a friendship (measured in number of e-mails exchanged or
+something else), or the amount of money one bank owes another, or the
+cost of an airline flight.
+When such data become more relevant later in the course, we will
+return to them; for now, we'll just focus on the basic graph
+structure, and keep in mind for the future that we'd often want to
+store more information at nodes or edges.
+The functions that the abstract data type should provide us are (at
+least) the following:
+
+\begin{itemize}
+\item adding and deleting a node.
+\item adding and deleting an edge.
+\item testing if a particular edge $(u,v)$ exists.
+\item for a node $u$, listing all of its outgoing/incoming edges or
+  all adjacent nodes.
+\end{itemize}
+
+The latter functions are particularly useful in the context of finding
+paths between nodes (as well as a few others, as we'll see later).
+A good implementation for them would be via iterators, i.e., the
+function returns an iterator that will eventually output all
+outgoing edges. (A separate function would return an iterator over all
+incoming edges; for undirected graphs, we may instead want an iterator
+over all adjacent nodes.)
+
+By using an iterator implementation, we can continue to hide from
+other classes how the abstract data type stores information about the
+graph internally, and will only reveal the minimum amount of
+information necessary.
+
+\subsection{How to Implement the ADT internally?}
+
+There are two natural ways to store a graph internally.
+In both cases, we would store nodes themselves in an array or perhaps
+a linked list or List or Set.
+\begin{enumerate}
+\item Via \todef{adjacency lists:} for each node, store a list of all
+  other nodes it is adjacent to. (This could be using the ADT Set, the
+  ADT List, a Linked List, or a dynamically growing array.)
+  If the graph is directed, we would store two separate lists: one for
+  outgoing edges and another for incoming ones.
+
+  The elements of the list would be either pointers to the other
+  nodes, or --- if nodes themselves are stored in an array ---
+  integers, i.e., the indices in the array where the other node is
+  stored. 
+
+\item Via an \todef{adjacency matrix:} Store an $n \times n$ matrix
+  (two-dimensional array) $A$. In position $A[u,v]$, store whether
+  there is an edge from $u$ to $v$. (This could be a boolean value, or
+  perhaps an integer storing the length, cost, or other information.)
+
+  What we store in position $A[u,u]$ depends on what our graph is
+  modeling. In some cases, it makes sense to treat it as though there
+  were an edge from $u$ to itself, in other cases not so much. There
+  is no rule that forces us to choose one or the other, and we should
+  use whatever makes our computational task easiest.
+\end{enumerate}
+
+In comparing the two approaches, we should always take into account
+which operations we expect to be performed more frequently. Let us
+compare which operations are more or less expensive in the two
+implementations.
+
+\begin{enumerate}
+\item For adding or removing nodes, an adjacency matrix has a bit more
+  overhead, since changing the size of a matrix involves a bunch of
+  reallocation and copying. For many applications that a computer
+  scientist is called upon to solve, changes in the set of nodes tend
+  to be a bit rarer while other processing is happening.
+
+\item Testing whether the edge $(u,v)$ exists in the graph is the
+  specialty of adjacency matrices. It only involves one lookup in a
+  known position of a 2-dimensional array, and thus takes $O(1)$
+  time. 
+
+  For an adjacency list, we don't have that information readily
+  available. Instead, we need to go through the list of all outgoing
+  edges of $u$, and see if $v$ is in that list. That will take
+  $\Theta(\text{outdegree}(u))$, which can be much larger.
+  (As we learn about better implementations of sets later, this
+  becomes faster, but even then, the time will not go down to constant.)
+
+\item Listing all outgoing/incoming edges of $u$ is the specialty of
+  adjacency lists. Since they explicitly store this information, they
+  just have to go through their Set/List, which takes time
+  $\Theta (\text{outdegree}(u))$ or $\Theta (\text{indegree}(u))$.
+
+  For an adjacency matrix, we don't have this information stored, so
+  we have to loop through the entire row (or column) of the node $u$,
+  and find all the entires that are 1 or \code{true}.
+  This will take $\Theta(n)$, which can be much worse if the degrees
+  are pretty small.
+
+\item We can also compare the memory requirements of the two
+  implementations. 
+  For the adjacency matrix, we need to store an $n\times n$ array,
+  which obviously requires $\Theta(n^2)$ memory.
+
+  For adjacency lists, we store all incoming and all outgoing edges,
+  which gives us a total memory requirement of
+  $\Theta(\sum_v (\text{indegree}(v) + \text{outdegree}(v)))$.
+  To evaluate this sum, notice that when we sum all in-degrees, we
+  count each edge exactly once, since it contributes 1 to the indegree
+  of exactly one node. So the sum of all indegrees is $m$, and
+  similarly for the sum of all outdegrees. Thus, the sum above is
+  equal to $2m$, which is $\Theta(m)$.
+  Thus, the total storage requirement is $\Theta(n+m)$ (since we also
+  need to store information for all nodes).
+
+  Thus, for sparse graphs, adjacency list are much more economical
+  with space than adjacency matrices, whereas for dense graphs, it
+  doesn't really matter too much in terms of memory.
+\end{enumerate}
+
+We saw above that each way of storing a graph has its own advantages
+and disadvantages. If memory isn't too big of a concern (it rarely is
+--- computation time is the bottleneck much more often than memory
+nowadays), one possible approach is to store the entire graph twice
+internally. When a user queries whether an edge $(u,v)$ exists, we
+answer it by using the adjacency matrix, while when the user queries
+all neighbors of a node $u$, we use adjacency lists.
+
+The downside of this approach (besides using twice as much memory) is
+that it requires us to execute each update to the graph twice: once
+on the adjacency matrix and once on the list.
+Thus, update operations (such as adding or removing nodes or edges)
+will take twice as long as before.
+However, this may well be worth it: for many graphs, updates are much
+less frequent than queries. For instance, when building a GPS, it is
+much rarer to have roads or intersections added to a road network than
+to look for routes between two locations.
+Similarly, in a social network, users add/remove friends much less
+frequently than reading their friends' updates.
+In those cases, the extra investment in updates is well worth it to
+have faster responses in queries.
+
+As an aside for the interested student, this idea of doing more
+``pre-processing'' during update time to speed up later operations at
+``query time'' is an important and active direction in data
+structures. Many papers are trying to find useful internal
+representations to answer queries about connectivity or short routes
+faster than with the ``default'' representations we considered above.
+
+\section{Graph Search: BFS and DFS}
+One of the questions most
+frequently asked about graphs is some variant of the following:
+\begin{itemize}
+\item Is there a path from $u$ to $v$?
+\item What is the shortest path from $u$ to $v$? (Either in terms of
+  number of hops, or distances or costs which may be stored on edges.)
+\item What is the distance from $u$ to every other node in the graph
+  (or every node that can be reached from $u$)?
+\end{itemize}
+
+All of these problems fall under the broad area of \todef{graph search}
+or computation of \todef{shortest paths} (or just paths). These
+problems have many important applications:
+
+\begin{enumerate}
+\item Finding fast or cheap ways to go from one place to another, by
+  utilizing road networks (optimizing distance or time), or airline or
+  train networks (optimizing time or cost).
+\item Finding social distance in a social network. One prominent
+  example of this is the \todef{Kevin Bacon Game}, in which the players
+  try to construct short sequences of movies that connect a given
+  actor or actress to the actor Kevin Bacon. There is an edge between
+  two actors iff they co-starred in at least one movie.\footnote{The
+    mathematicians' version of this is the Erd\H{o}s Number, where two
+    mathematicians are connected iff they co-authored at least one
+    paper, and one is interested in the number of hops to the
+    legendary Hungarian mathematician Paul Erd\H{o}s.}
+\item In a game (usually a puzzle or logic game), is there a way to
+  manipulate the game according to the rules (sliding boxes, squares,
+  changing switches, moving around, etc.) to get from a given initial
+  state to a given target state?
+\item The idea of planning to get from one state to another is more
+  pervasive, and extends beyond games. Robots need to plan sequences
+  of moves to get them from one configuration to another. Many systems
+  need to plan sequences of actions to execute.
+\end{enumerate}
+
+One can come up with many more examples: a huge number of real-world
+problems are extremely naturally modeled as shortest path searches in
+suitably defined graphs. Therefore, graph search algorithms are one of
+the most central concepts for a computer scientist to be familiar
+with.
+
+As we briefly mentioned above, there are a few parameters along which
+concrete instances can differ:
+\begin{enumerate}
+\item Do we just want to know \emph{whether} a path exists, or do we
+  need to find it? 
+\item If we need to find a path, do we want the shortest path, or will
+  any path do?
+\item If we don't need to find it, do we need the exact distance
+  between nodes, or just whether a path exists?
+\item Do edges have lengths/costs associated with them, or are we just
+  interested in the number of hops.
+\item If edges have costs associated with them, can they be negative?
+\end{enumerate}
+For the first three questions, it turns out that generally, the
+problem doesn't get much easier by asking just \emph{whether} a path
+exists, so the algorithms we will investigate will actually find a
+path; and the most ``natural'' algorithm (BFS) actually finds a
+\emph{shortest} path. On the other hand, edge lengths/costs make the
+problem a bit more challenging, and we will see later in class how to
+deal with them. Negative edge costs are not terribly difficult, but
+are a little bit beyond this class --- you will likely learn about
+them in CSCI 270.
+
+\subsection{Breadth-First Search (BFS)}
+\todef{Breadth-First Search (BFS)} is a fairly simple algorithm that
+finds the shortest path (in terms of number of hops) from a given node
+$u$ to all nodes $v$. 
+The idea of BFS is to ``explore'' the graph in layers. 
+\begin{itemize}
+\item Layer 0 is the node $u$ itself.
+\item Layer 1 consists of all nodes $v$ with a direct edge $(u,v) \in
+  E$.
+\item Layer 2 consists of all nodes $w$ with a direct edge $(v,w) \in
+  E$ from some node $v$ in layer 1. However, it excludes nodes that
+  were already in Layer 1 themselves.
+\item More generally, Layer $k$ consists of all nodes $w$ with a
+  direct edge from some node $v$ in Layer $k-1$, but such that $w$
+  itself was not already in an earlier layer.
+\end{itemize}
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=1cm,arrowsize=0.1 3}
+\pspicture(-2,-2)(4,3)
+
+\cnodeput[fillstyle=solid,fillcolor=lightgray](0,0){u}{$u$}
+\cnodeput(-1,1){v1}{$v_1$}
+\cnodeput(1,1){v2}{$v_2$}
+\cnodeput(0,-1){v3}{$v_3$}
+\cnodeput(0,3){w1}{$w_1$}
+\cnodeput(-1,-2){w2}{$w_2$}
+\cnodeput(1,-2){w3}{$w_3$}
+\cnodeput(2,3){x}{$x$}
+\cnodeput(4,3){y}{$y$}
+
+\ncline{->}{u}{v1}
+\ncline{->}{u}{v2}
+\ncline{->}{u}{v3}
+\ncline{->}{v1}{v2}
+\ncline{->}{v1}{w1}
+\ncline{->}{v2}{w1}
+\ncline{->}{w1}{x}
+\ncline{->}{y}{x}
+\ncline{->}{v3}{w2}
+\ncline{->}{v3}{w3}
+
+\endpspicture
+\end{center}
+\caption{A directed graph. Here, layer 0 is just node $u$ (the source).
+The nodes $v_1, v_2, v_3$ form layer 1. 
+The nodes $w_1, w_2, w_3$ are layer 2.
+Notice that node $v_2$ was already in layer 1, so it's not also in
+layer 2.
+Layer 3 contains just node $x$. Notice that node $y$ is not reachable
+from $u$, and is thus at infinite distance. \label{fig:BFS}}
+\end{figure}
+
+The recursive definition of layers is quite nice. 
+It's not too difficult to prove with this definition that the nodes in
+layer $k$ are exactly at distance $k$ from $u$.
+However, to implement this algorithm, we will have to process nodes
+one by one, as processing an entire layer at once is not standard
+programming functionality.
+
+When we process nodes sequentially, we would like to make sure that
+all nodes from layer $k$ have been processed before we get to the
+nodes in layer $k+1$. Because we ``discovered'' (with the algorithm)
+the nodes in layer $k$ before those in layer $k+1$, this means we
+should process nodes in the order they were discovered. 
+We have seen a data structure supporting exactly that: a FIFO queue.
+Indeed, the FIFO queue is the central part of the Breadth-First Search
+algorithm.
+
+For the description and the analysis, we will let
+$\hat{d}(v)$ denote the \emph{actual} distance from $u$ to $v$, and
+\code{d[v]} the distance the algorithm computes. 
+Of course, we hope that those will be the same, but we need to
+actually prove that.
+We will assume that nodes are numbered with integers 
+$0, 1, \ldots, n-1$, so that we can simply store values associated
+with nodes in arrays of size $n$.
+In addition to the array of distances \code{d[v]}, the algorithm will
+also compute an array of \emph{predecessors} \code{p[v]}: for each
+node $v$ (other than $u$), this is a node in the previous layer which
+has an edge to $v$. 
+For instance, in Figure~\ref{fig:BFS}, $p[w_3] = v_3$, and $p[x] =
+w_1$. On the other hand, $p[w_1]$ could be either $v_1$ or $v_2$,
+depending on the order in which those two nodes were explored.
+We will consider the arrays as global variables, just to keep notation
+simple.
+
+\begin{verbatim}
+int d[n];  // will store distances from u
+int p[n];  // will store predecessors of nodes on shortest paths from u
+
+void BFS (int u) {
+  bool visited[n] = {false};  // no node is visited yet.
+  Queue<int> q ();  // empty queue to start.
+  visited[u] = true; d[u] = 0;
+  q.enqueue (u);
+  while (!q.empty()) {
+     int v = q.peekfront();
+     q.dequeue ();
+     for (all nodes w with an edge (v,w) in E)  // use some iterator
+         if (!visited[w]) {
+            visited[w] = true;
+            d[w] = d[v] + 1;
+            p[w] = v;
+            q.enqueue(w);
+         }
+   }
+}
+\end{verbatim}
+The idea of the algorithm is as follows: we start with just the seed
+node $u$. Its distance from itself is obviously 0.
+Then, the \code{for} loop adds all of $u$'s neighbors to the queue.
+
+Whenever we process a node $v$ (dequeuing it), we look at all its
+outgoing edges. 
+The edge could lead to a node we have already seen, in which case we
+should not process it again --- if we did, we might accidentally
+increase the distance label.
+If we have not seen the node $w$ before, then we mark it as ``visited''
+(so it isn't processed again\footnote{Forgetting this part is a
+  commonly made mistake when coding BFS.}), and set its distance and
+predecessor correctly. 
+The predecessor is the node $v$ from which the edge $(v,w)$
+allowed us to discover $w$, and the fastest way to go from $u$ to $w$
+is to first go to $v$, then take one more hop, so the distance is one
+more than that of $v$. Finally, we add $w$ to the queue, so it's
+processed later.
+
+While we won't do a formal correctness proof of BFS in this
+class, we want to roughly think about how BFS ensures correctness.
+Clearly, the FIFO queue is essential, and we should think what exactly
+it guarantees. A loop invariant that works would be the following.
+At each point in the \code{while} loop, the following are true:
+\begin{enumerate}
+\item For all nodes $v$ with \code{visited[v] == true}, the values of
+  \code{d[v]} and \code{p[v]} are correct. 
+  That is, $d[v] = \hat{d}(v)$, and $p[v]$ is a last hop node on a
+  shortest path from $u$ to $v$.
+\item The distances of nodes in the queue are sorted.
+  Let $v_1, v_2, \ldots, v_k$ be the nodes in the queue, sorted by
+  when they were inserted. ($v_1$ has been in the queue longest, and
+  $v_k$ was added most recently.) 
+  Then, $d[v_1] \leq d[v_2] \leq \ldots \leq d[v_k]$.
+\item The nodes in the queue are all from just two adjacent layers.
+  That is, $d[v_k] \leq d[v_1] + 1$.
+\end{enumerate}
+While this may seem a little convoluted, if you think about it
+carefully, you'll hopefully see how that captures exactly our
+intuition that the FIFO queue gives a close emulation of processing
+nodes in layers. A correctness proof would now establish the loop
+invariant by induction over iterations of the \code{while} loop.
+
+Next, let's analyze the running time of the BFS algorithm.
+First, we notice that the initialization of the \code{visited} array,
+while written as one line, actually takes $\Theta(n)$.
+All other individual commands take time $\Theta(1)$.
+So, as usual, we'll analyze loops inside out.
+The \code{for} loop goes through all outgoing edges of node $v$.
+If our iterator is implemented carefully (e.g., we used an adjacency
+list for our graph), then this takes $\Theta(\text{out-degree}(v))$
+for node $v$. All the rest of the code inside the \code{while} loop
+takes time $\Theta(1)$, so the total time inside one iteration of the
+loop is $\Theta(1+\text{out-degree}(v))$.
+(Normally, we would drop the 1. The reason we are keeping it here for
+the moment is that it is possible that $\text{out-degree}(v) = 0$, in
+which case our analysis would claim that the iteration takes 0 time,
+which is not true.)
+Now, as usual, we notice that the \code{while} loop may run over all
+nodes, so the running time is a sum
+\[
+\sum_v \Theta(1+\text{out-degree}(v))
+\; = \; \Theta(\sum_v 1 + \sum_v \text{out-degree(v)})
+\; = \; \Theta(n+m).
+\]
+Together with the $\Theta(n)$ for initialization, the total running
+time of BFS is $\Theta(n+m)$, which is linear in the size of the graph
+(the time it takes just to read the graph as input).
+So BFS is a fast algorithm.
+
+\subsection{Depth-First Search (DFS)}
+Breadth-First Search processes the graph by layers of increasing
+distances from the start node $u$. That is what FIFO queues are great
+for. The downside is that the search algorithm jumps all around over
+different areas of the graph. 
+For instance, if you trace the execution on the graph in
+Figure~\ref{fig:BFS}, you see that after processing
+$u, v_1, v_2, v_3$, rather than staying with $v_3$ and its neighbors,
+the algorithm next jumps to $w_1$. 
+When you want just shortest paths, that's of course not a problem, but
+sometimes, you want to explore a graph by staying local --- this is
+sometimes needed as part of other algorithms. 
+To explore a graph locally, we would want to first explore all the
+nodes ``around $v$'' before switching to other parts of the graph.
+
+We can accomplish this by replacing the FIFO Queue in the BFS
+algorithm with a LIFO Stack instead. That way, the most recently added
+node will be the one explored next, which ensures that the algorithm
+stays in a neighborhood of a node. Apart from that one-word change,
+the algorithm is exactly the same. This algorithm is called
+Depth-First Search (DFS), because it first explores the neighborhood
+of a node going deeper into that area, before going for other parts of
+the graph.
+
+Of course, DFS will \emph{not} find shortest paths any more
+necessarily. For instance, in our Figure~\ref{fig:BFS}, it will
+first reach $v_2$ from $v_1$, assigning it a distance of 2, and never
+revisiting this choice. Notice that this is fine --- DFS is not used
+when one wants \emph{shortest} paths. For that, you would use BFS.
+But since the \code{d[v]} values don't really capture anything
+particularly useful any more, we could simplify the algorithm a bit by
+removing those arrays altogether.
+
+The running time of DFS is obviously also $\Theta(n+m)$, since we just
+plugged one data structure in for another, and all operations take the
+same amount of time. 
+
+There is an alternative (perhaps even simpler) implementation of DFS
+using recursion instead of a stack.
+
+\begin{verbatim}
+bool visited[n] = {false};
+
+void DFS (int u) {
+  for (all nodes v with an edge (u,v) in E)   // again use an iterator
+     if (!visited[v]) {
+        visited[v] = true;
+        p[v] = u;
+        DFS(v);
+     }
+}
+\end{verbatim}
+
+In this implementation, we don't have to explicitly worry about stacks
+--- the recursion automatically takes care of the stack for us.
+
+\section{PageRank}
+Students familiar with linear algebra (hopefully most of you) will
+remember ``matrices'' as the central concept in that field. 
+Is it a pure coincidence that we are interested in the adjacency
+\emph{matrix} of graphs? Not really.
+
+There are a lot of interesting things one can do with matrices, such
+as adding, multiplying, finding eigenvectors and eigenvalues, and
+more. It turns out that some of these have really 
+useful meanings in computing properties of graphs, and some of the most
+exciting research in graph theory these days is based on interesting
+computations with adjacency matrices (and slight variations of them).
+The area is known as \todef{spectral graph theory}, and some of the
+results are quite complicated. But other cases are pretty directly
+accessible, and we will look at one of the easier and more useful ones
+now.
+
+One of the many things naturally modeled by graphs is hyperlinked
+text, such as the World Wide Web. If we think about the task of
+writing a web search engine, one of the biggest problems is how to
+identify not just pages containing a particular word, say, ``graph'',
+but to find the best ones. (Google currently reports about 86 million
+results, which is a bit too many for a user to check by hand.)
+Of course, the ideal solution would be if the search engine could
+actually \emph{understand} the text and find out what the page is
+about, and whether it's useful. But understanding natural languages is
+a notoriously difficult task, and even today, the mere task of
+determining the \emph{topic} of a piece of text is quite difficult,
+let alone finding out whether the text is \emph{useful} on that
+topic.
+
+In fact, in the early days of the web (mid-1990s), most search engines
+were really quite bad, since they were exclusively text-based.
+The key insight which gave Google a huge edge was to look at the link
+structure of the web to determine which pages were good. Google
+started as a research project by two grad students at Stanford, but
+was so much better than the competitors that it quickly became a
+serious product. The idea to use links is obvious in retrospect, but
+wasn't at the time.
+
+The idea behind using links is that if page A links to page B, then
+this must to some extent express an endorsement from A of
+B.\footnote{Sometimes, links are made to mock or otherwise disparage
+  another page, but those are definitely in the minority.}
+Thus, all things equal, if we are looking at two pages A and B both
+containing the search term, and A has more inlinks than B, then we
+would think that A is better than B. This would be our draft 1 of
+using links.
+
+Once we start thinking in those terms, we realize that not all links
+are created equal. An inlink from the NY Times is probably a stronger
+endorsement of a page than an inlink from a friend or relative. In other
+words, links from pages which are themselves good should contribute
+more to a page being considered good. Of course, now, our definition
+has become self-referential: in order to know whether a page is good,
+we need to know whether the pages linking to it are good. That seems
+circular, but as we'll see in a moment, it actually admits a nice
+solution.
+
+The other way in which links are not created equal is in terms of the
+number of outgoing links. If we have determined that A and B are
+equally good pages, and A has just one outgoing link, to C, while B
+has 10,000 outgoing links, one of them to D, then we would expect that
+the link from A to C confers more support (because it was chosen
+carefully) than the one from B to D (which is just one among many,
+maybe part of a directory or ``phone book'').
+
+Putting all of these together, we could say that each page $i$ has a
+quality score $q_i$, and that these must satisfy the following
+equation:
+\[ 
+q_i \; = \; \sum_{j: j \to i} \frac{1}{\text{out-degree}(j)} \cdot q_j.
+\]
+Thus, each page $j$ confers equal fractions of its own quality on all
+the pages it links to. This captures all of the things we wanted to
+capture earlier. Notice that in order to make this work out, i.e., for
+the system of linear equations to have a solution, we need to assume
+(or make sure) that each page links to itself.
+
+We an also get this system of linear equations into more standard
+matrix-vector system notation. Let $A$ be the adjacency matrix of the
+directed graph, with $A=(a_{i,j})$ and $a_{i,j} = 1$ if $i$ links to
+$j$, and 0 if not. (As we mentioned above, this works better if
+$a_{i,i} = 1$ for all $i$.) Then, we can write 
+
+\[ 
+M \; = \; \left( \begin{array}{cccc}
+\frac{1}{\text{out-degree}(1)} & 0 & \cdots & 0\\
+0 & \frac{1}{\text{out-degree}(2)} & \cdots & 0\\
+0 & 0 & \ddots & 0 \\
+0 & 0 & \cdots & \frac{1}{\text{out-degree}(n)}
+          \end{array} \right) \cdot A.
+\]
+
+Then, we can rewrite the previous system of linear equations as 
+$\vec{q} = M^T \cdot \vec{q}$, where you may remember that the $T$
+stands for taking the transpose of the matrix, i.e., mirroring it
+along the main diagonal. This says that $\vec{q}$ is an eigenvector of
+$M$ for the eigenvalue 1.
+
+We can interpret the same system of linear equations in a different
+way. Suppose that a person, whom we will call a random surfer, starts
+at some node $i$. In each step, he clicks on a uniformly random
+outgoing link from the current page, and follows that link. Then, he
+continues from there. Because each outgoing link is taken with
+probability $\frac{1}{\text{out-degree}(i)}$, he is at each of the
+endpoints with that probability after 1 step. We then continue in this
+way, and we see that the vector $(M^T)^k \cdot (0, 0, \ldots, 1, 0,
+\ldots, 0)$ captures exactly the probability of being at each of the
+nodes after $k$ steps. 
+
+But this also reveals a flaw in our approach so far: Once the surfer
+reaches a node $j$ with no outgoing links (except to itself), he will
+never go anywhere else. Those are the only places to get stuck, and as
+a result, in the long run, the only states that have non-zero
+probability are those with no outgoing links. That's not exactly what
+we wanted.
+
+The solution is a small hack. Thinking still about our random surfer,
+to get him unstuck, we also allow him to jump to a random location.
+In each step, with some probability $\alpha$, the surfer jumps to a
+uniformly random new node (i.e., any node, whether connected by an
+edge or not); with the remaining probability $1-\alpha$, the surfer
+follows a random outgoing link from the current page.
+In practice, people typically choose $\alpha = 15\%$ or similar
+values. The number $1-\alpha$ is also called the \emph{damping factor}.
+We can now rewrite our linear system, as follows. Let 
+\[ B = (1-\alpha) M + \alpha \cdot \frac{1}{n} \cdot \left(
+  \begin{array}{cccc} 1 & 1 & \cdots & 1 \\ 1 & 1 & \cdots & 1\\
+                      1 & 1 & \ddots & 1 \\ 1 & 1 & \cdots & 1
+                    \end{array} \right).
+\]
+This is the new transition matrix describing the modified surfer
+process. We can now write $\vec{p} = B^T \cdot \vec{p}$ as our system
+of equations. In other words, the quality vector we want is an
+eigenvector of $B$ with eigenvalue 1.
+
+The vector $\vec{p}$ is called the \todef{PageRank} vector for the
+graph $G$ whose adjacency matrix is $A$. 
+To use it for web search, one can first compute the PageRank vector,
+and then sort all eligible pages (e.g., all pages containing the
+search term) by their PageRank values. The better ones will typically
+end up on top.
+PageRank was the key insight for Google at the time it got started. 
+Of course, by now, Google has a lot of additional ideas built into it,
+with many special case treatments, stuff it learned from billions of
+searches, etc. 
+
+Notice that one can apply PageRank in other settings, too. It can be
+used any time we believe that links confer some kind of status or
+importance. For instance, we could use it to identify important
+individuals in a social network, or important servers in a computer
+network.
+
+In order to actually \emph{compute} the PageRank vector, we can use
+pretty much any general-purpose linear system solving technique, such
+as the Gauss elimination method you learned in middle school.
+However, thanks to the relatively large value of $\alpha$, iterative
+methods will converge quite fast, and are probably a superior
+approach, at least in terms of computation speed.
+
+You start with an arbitrary vector $\vec{p}_0$. In each iteration, you
+compute $\vec{p}_{t+1} = B^T \vec{p}_t$. As $t \to \infty$, the
+$\vec{p}_t$ will always converge to the eigenvector $\vec{p}$ we are
+looking for. In fact, this works for almost any matrix --- basically,
+any matrix $C$ for which the corresponding graph (with edges $(i,j)$
+whenever $c_{i,j} \neq 0$) is connected. For general matrices $C$, the
+convergence speed of this iterative method could be very slow.
+However, for PageRank specifically, iterative methods will converge
+fast, typically giving good approximations after 30--100 iterations
+already (even for very large graphs).

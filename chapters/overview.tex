@@ -1,0 +1,208 @@
+Having taken an introductory CS class (such as our CSCI 103),
+you are probably somewhat proficient in basic programming,
+including the following basic features:
+\begin{description}
+        \item[Data types:] \code{int}, \code{string},
+          \code{float/double}, \code{struct}, arrays, $\ldots$.
+	\item[Arithmetic:]
+	\item[Loops:] \code{for}, \code{while} and maybe \code{do-while}
+	\item[Tests:] \code{if}, \code{else} and \code{switch}
+	\item[Pointers:]
+        \item[Functions:] and some recursion
+        \item[Other:] I/O and other useful functions
+        \item[OOP:] Some students have probably already learned a bit
+          about object-oriented programming, but for now, we will not
+          rely on this.
+\end{description}
+
+In principle, these features are enough to solve any programming
+problem. In fact, in principle, it is enough to have nothing except
+\code{while} loops, \code{if} tests, integers, and arithmetic.
+Everything that we learn beyond those basics is ``just''
+there to help us write better, faster, or more easily maintained or
+understood code.
+Writing ``better'' code comes in two flavors in this context:
+\begin{enumerate}
+\item Learning problem-solving and conceptual ideas that let us solve
+  problems which we didn't know how to solve (even though we had the
+  tools in principle), or didn't know how to solve fast enough.
+\item Learning new language features and programming concepts helps us
+  write code that ``feels good,'' in the sense that it is easy to
+  read, debug, and extend.
+\end{enumerate}
+
+The way you are probably thinking about programming at this
+point is that there are some input data
+(maybe a few data items, or an array),
+and the program executes commands to produce an output from the input data.
+Thus, the sequence of instructions --- the algorithm --- is at
+the center of our thinking.
+
+As you become a better programmer, it is often helpful to put the data
+themselves at the center of your thinking, focusing on how data
+get transformed or changed throughout the execution of the program. 
+Of course, in the end, the program will still mostly do the same,
+but this view often leads to much better (more maintainable, easier to
+understand, and sometimes also more efficient) code. 
+Along the way, you will see how thinking about the organization of your
+data can be really important for determining how fast your code
+executes.
+
+\begin{example} \label{exm:overview:binary-search}
+Suppose that two students each get a list of the names and e-mails of
+all students in the class.
+One student gets the list sorted alphabetically,
+while the other's version contains the names in random order.
+Both students are asked to look up the e-mail of one particular
+student by name.
+Who would you expect to be faster at the task?
+
+Except in rare cases, the student with the sorted list will be much
+faster, and indeed, this is what happens when we run this experiment
+in the classroom. 
+\end{example}
+
+What Example~\ref{exm:overview:binary-search}
+shows us is that the way we organize our data can have a profound
+impact on how fast (or slowly) we can solve a computational task. 
+\emph{The basic question of how to organize data to support the
+  operations we need is the centerpiece of what you will learn in this
+  class.}
+
+What do we mean by ``support the operations we need?''
+Let's go back to the example of looking up e-mails of students by name.
+Here, the key operation is clearly the ``lookup'' operation,
+at least from the standpoint of the student doing the looking up.
+But when we look at the bigger picture,
+those data items (pairs of a student name and an e-mail) had to be
+added into that form somehow.
+And sometimes, we may want to delete them.
+So really, the three operations we are interested in are:
+
+\begin{itemize}
+\item Insert a pair of a name and e-mail into the list.
+\item Remove a name from the list.
+\item Look up the e-mail for a given name.
+\end{itemize}
+
+Purely from the perspective of speeding up the lookup operation,
+the sorted list was much better than the unsorted one.
+But in terms of inserting items, it is clearly better to keep the list
+unsorted, as we can just append items at the end of the list, and not
+have to worry about putting the item in the right place.
+For removal --- well, you will learn about that a little more later.
+
+It is easy to imagine scenarios where keeping the list sorted is not
+worth it.
+For instance, if we need to add data items all the time,
+but very rarely look them up (say, some kind of backup mechanism for
+disasters), then sorting the list is not worth it.
+Or maybe, the list is so short that even scanning through all the
+items is fast enough.
+
+The main take-away message is that the answer to ``What is the best
+way to organize my data?'' is almost always ``It depends.'' 
+You will need to consider how you will be interacting with your data,
+and design an appropriate data structure \emph{in the context of its purpose}. 
+Will you be searching through it often?
+Will data be added in frequent, short chunks, or in occasional huge blocks?
+Will you ever have to consolidate multiple versions of your data structure?
+What kinds of queries will you need to ask of your data?
+
+\medskip
+
+There is another interesting observation we can take away from the previous
+example. We said that we wanted our data structure to support
+the operations \code{add}, \code{remove}, and \code{lookup}.
+Let us be a little more general than just thinking about a list of students.
+\begin{itemize}
+\item The \code{add (key, value)} operation gets a \emph{key} and a
+  \emph{value}. (In our case, they were both strings, but in general,
+  they don't have to be.)
+  It creates an association between the key and value.
+\item The \code{remove (key)} operation gets a key, and removes the
+  pair that has the given key.
+\item The \code{lookup (key)} operation gets a key, and returns the
+  corresponding value, assuming the key is in the structure.
+\end{itemize}
+This type of data structure is typically called a \todef{map},
+or a \todef{dictionary}.
+
+So is a sorted list a map? Not exactly.
+After all, an unsorted list would also be a map.
+There seems to be a difference.
+The main difference is that the word ``map'' describes the
+\emph{functionality} that we want:
+\emph{what} the data structure is supposed to do.
+On the other hand, a sorted list (or an unsorted list) is a
+\emph{specific way} of getting this functionality:
+it says \emph{how} we do it. 
+
+This distinction is very important. When you start to program,
+usually, you just go straight ahead and plan out all of your code.
+As you take on bigger projects, work in larger teams, and generally
+learn to think more like a computer scientist, you get used to the 
+notion of \todef{abstraction}: separating the ``what'' from the ``how.''
+You can work on a project with a friend, and tell your friend
+which functions you need from him/her, without having to think through
+how they will be implemented. That is your friend's job.
+So long as your friend's implementation works (fast enough) and meets
+the specification that you prescribed (say, in terms of which order
+the parameters are in), you can just use it as is.
+
+So the way we would think about a map or dictionary is mostly in terms
+of the functions it provides:
+\code{add}, \code{remove}, and \code{lookup}.
+Of course, it must store data internally in order to be
+able to provide these functions correctly, but how it does that is
+secondary --- that is part of the implementation.
+This combination of data and code, with a well-specified interface of
+functions to call, is called an \todef{abstract data type}.
+
+Once you start realizing the important role that data organization
+(such as using abstract data types) plays in good code design,
+you may change the way you think about code interacting with data.
+When starting to program, you probably thought about code that gets
+passed some data (arrays, structs, etc.) and processes them.
+Instead, you may now think of the data structure itself as having functions
+that help with processing the data in it. 
+In this way of thinking, an array in which you can only add things at
+the end is different from one in which you are allowed to overwrite
+everywhere, even though the actual way of storing data is the same.
+
+This leads us naturally to \todef{object-oriented design} of programs. 
+An \todef{object} consists of data and code; it is basically a
+\code{struct} with functions inside in addition to the data fields. 
+This opens up a lot of ideas for developing more legible,
+maintainable, and ``intuitive'' code.
+Once you think about objects, they often become almost like little
+people in your mind.
+Different objects serve different purposes,
+and they interact with each other in particular ways.
+
+One of the main things that thinking in terms of object-oriented
+design (and abstract data types) does for you is to help achieve 
+\todef{encapsulation}: shielding as much of the inside of an object as
+possible from the outside, so that it can be changed without
+negatively affecting the code around it.
+The textbook refers to this as ``walls'' around data.
+Encapsulation helps you achieve modularity, i.e., it ensures that
+different pieces of code can be analyzed and tested in isolation more 
+easily.
+
+\medskip
+
+To summarize, the learning goals of this class are:
+\begin{enumerate}
+\item Learn the basic and advanced techniques for actually
+  implementing data structures to provide efficient functionality.
+  Some of these techniques will require strong fundamentals,
+  and their analysis will enter into more mathematical territory,
+  which is why we will be drawing on material you will be learning
+  simultaneously in CSCI 170.
+\item Learn how to think about code more abstractly, separating the
+  ``what'' from the ``how'' in your code design and utilizing abstract
+  data types to specify functionality.
+\item Learn about good programming practice with object-oriented
+  design, in particular as it relates to implementing datatypes.
+\end{enumerate}

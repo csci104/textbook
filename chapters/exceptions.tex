@@ -1,0 +1,222 @@
+\section{Handling errors}
+In previous lectures, we implemented a linked list.
+Suppose that we had added a function 
+\code{int get (int position)} which returns the element at the given
+position. 
+Now someone else who got hold of our code writes the following:
+
+\begin{verbatim}
+    LinkedList *LL = new LinkedList;
+    for (int i = 0; i < 10; i ++) LL->append (i);
+    cout << s->get(15) << endl;
+\end{verbatim}
+
+When \texttt{get(15)} is called, the List does not have 15 elements
+yet. What should be returned?
+If we ran a loop of 15 steps through the list, the result here will
+likely be an attempt at dereferencing a \code{NULL} pointer,
+triggering a segfault.
+The program will quit, and the person using our Linked List will not
+really know what went wrong (except after some debugging). 
+Also, simply ending the program may not be the right thing to do here.
+What's the right way to deal with this problem?
+
+\begin{itemize}
+\item The simplest way is to claim that this is not your problem, and hold
+the user responsible for correct usage of your code.
+This falls into the broader paradigm ``garbage in, garbage out''. 
+This is not a completely unreasonable position to hold; 
+the person wanting to use your class should make sure to test whether
+the stack is empty before accessing it.
+But as we all know, ``should'' does not mean ``will'', and your goal
+when writing code is not necessarily to help others develop good
+habits, but to develop good code yourself.
+
+\item A second idea would be to return a `magic' value like -1.
+This might work when the list is known to only contain positive
+values; the programmer could then use the unexpected return to debug
+their code. 
+However, if the list can contain any integers, there is no ``safe''
+magic value. And for a more general list (of a templated type), this
+solution is untenable, as we wouldn't even know what to return. 
+Further, the programmer might simply choose to ignore bad
+returns, which would cause errors to trickle up.
+
+\item A third, and somewhat better, approach is to use the \code{assert}
+statement.
+In general, \code{assert} statements are good debugging technique.
+For instance, we could insert the statement
+\code{assert (position < this->size())} as a first line of
+\code{get()}. 
+(To use \code{assert} statements, you need to \code{\#include<cassert>}.)
+
+An \code{assert} statement simply causes the program to crash when the
+asserted condition fails to hold. While this is still a crash, at
+least, it gives more useful information, namely, printing in which
+line the crash happened, and what condition failed. This helps
+significantly in debugging.
+However, the program still crashes, which means that it does not have
+the option of dealing with the error themselves.
+\end{itemize}
+
+These solutions all still involve crashes, which may not be the best
+way to handle mistakes, e.g., if you're running the backend database
+for a major website, or the control software for a rocket or a nuclear
+power plant.
+Instead, it would be better to actually signal to the caller of our
+function that something went wrong (and what), and give it a chance to
+handle the mistake.
+
+\section{Setting Flags}
+The way errors are traditionally signaled in C is by making the
+function return a \code{bool} instead of the actual value we're
+interested in, and passing the actual value by reference in another
+variable. The following example illustrates this:
+
+\begin{verbatim}
+bool LinkedList::get (int position, int & val) 
+{
+   if (position < this->size()) {
+      Item *p = head;
+      for (int i = 0; i < position; i ++)
+        p = p->next;
+      val = p->value;
+      return true;
+    } else return false;
+}
+\end{verbatim}
+
+This is a significant improvement. A slight downside is that the
+calling function may still ignore the \code{bool} value, and simply
+use the undefined value in \code{val}. 
+
+\section{Exceptions}
+The C++ solution is to use exceptions. 
+Exceptions allow us to provide feedback about the success of an
+operation, in such a way that a caller \emph{must} deal with the
+failure condition explicitly.
+The basic use of an exception is as follows: 
+
+\begin{enumerate}
+\item Upon failure, the method notifies the calling code by
+  ``throwing'' an exception.
+\item This exception propagates ``up'' through the program stack until
+  it reaches a piece of code designed to handle it; it continues
+  there. 
+\item If no such code is found, the program terminates. 
+\end{enumerate}
+	
+As an illustration, a revised version of our \code{get()} function may
+look as follows:
+\begin{verbatim}
+int LinkedList::get(int position) {
+    if (position >= this->size()) throw logic_error ("position was too large!");
+    else {
+      Item *p = head;
+      for (int i = 0; i < position; i ++)
+        p = p->next;
+      return p->value;
+    }
+}
+\end{verbatim}
+
+Whenever you want to write code that throws/handles exception, you
+should \code{\#include<exception>}.
+In principle, any kind of object (even an integer, or an
+\code{Item}) can be ``thrown'' and treated as an exception.
+However, typically, you would like to only use objects that inherit
+from the class \code{exception}, since they contain some standard
+methods that tell you about what caused the exception.
+C++ also provides a few standard ``types'' of exceptions
+pre-implemented in \code{\#include<stdexcept>}; for instance, the
+class \code{logic\_error} we used above is included in that header
+file. Throwing a type of exception whose name (and content) reflect
+the type of error that happened helps in understanding what error
+occurred.
+
+At the point at which an exception can be reasonably handled, we use
+the \code{try}-\code{catch} construct to deal with it.
+\code{try} is used for a block that may throw an exception;
+\code{catch} provides code to execute in case an exception actually
+does happen. If a piece of code would not know what to do with an
+exception, it should \emph{not} catch it, and instead let it percolate
+up to a higher level, where it may be reasonably handled.
+In our earlier list example, the \code{main} function may now look as
+follows:
+
+\begin{verbatim}
+//main
+try {
+       cout << s->get(15) << endl;
+       cout << "Printed successfully!" << endl;
+    } catch (logic_error &e) {
+       cout << "A logic error occurred!" << endl;
+       cout << e.what();
+    }
+\end{verbatim}
+
+Here, if/when an exception occurs, the execution of the \code{try}
+block terminates (so we never get to the second line about printing
+successfully); instead, the program jumps to the first \code{catch}
+block that matches the exception. In our case, because a
+\code{logic\_error} is thrown, the \code{catch} block matches, so the
+program prints the message. It then also prints the string we had
+passed into the constructor (i.e., ``head pointer was null!''), since
+that's what it returned by the \code{what()} function in the class
+\code{exception}. The existence of the \code{what()} function is one
+of the reasons to use classes derived from \code{exception}.
+If you write your own exception class, you should inherit from
+\code{exception} and overload the virtual \code{what()} function to
+report what your exception is about.\footnote{We will learn about
+  inheritance and virtual functions soon.}
+
+Notice in the above example that \code{e} is an exception object,
+which is passed by reference. It has some data in it. 
+For example, we just put a message string in it, but we could also
+have put in the description of the variables that caused the
+exception. 
+We could write our own exception object to throw as well; 
+for instance, we may decide that we want a specific
+exception type to signal if the index is out of bounds.
+
+\begin{verbatim}
+class OutOfBoundsException : public exception {
+    public:
+       int pos;
+       OutOfBoundsException (int d) {
+              pos = d;
+       }   
+}
+\end{verbatim}
+
+Then, we would throw specifically an \code{OutOfBoundsException} rather
+than a \code{logic\_error}.
+
+A \code{try} block can have multiple \code{catch} blocks associated
+with it, to deal with different types of exceptions. 
+In this case, the program will execute the \emph{first} \code{catch}
+block that matches the exception that is thrown.
+This means that the more specific types of exceptions should precede
+the more general ones.
+
+\begin{verbatim}
+LinkedList *L = new LinkedList ();
+
+try {
+      cout << L->get(3);
+    }
+catch (OutOfBoundsException &e)
+      { cout << "Array Index was out of Bounds" << endl; 
+        // specific treatment when index is out of bounds
+      }
+catch (exception &e)
+      { cout << "General Type of exception" << endl; }
+\end{verbatim}
+
+Here, the first block may have some treatment for specifically the
+case when the array index was out of bounds, while the second block
+may have a less specific treatment (such as just an error message)
+when some other, less specific, error occurred.
+If we had put the two \code{catch} blocks in the opposite order, the
+special treatment for \code{OutOfBoundsException} would never kick in,
+as all those exceptions would already be caught in the more general block.

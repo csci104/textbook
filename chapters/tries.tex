@@ -1,0 +1,439 @@
+We have now seen two good data structures for maps: Hashtables and
+Balanced Search Trees. As a general purpose technique, these work
+great. But in some cases, we know that our keys are of a specific
+type, and by using this information, we can design even more efficient
+maps. A case for which this has been explored in particular is when
+the keys are strings.
+
+String keys are very frequent, and often part of large data
+sets. Consider the following applications:
+
+\begin{description}
+\item[Search Engines:] You have a large text corpus (all web pages),
+  and are looking for the occurrence of certain substrings in
+  it. While you are allowed to spend a bit of time pre-processing, the
+  lookup should be fast.
+\item[Text Editors:] People often write long text documents, and one
+  of the functionalities that is needed is to find (and maybe replace)
+  occurrences of certain words in the text. Again, the \code{find}
+  function should run nearly instantaneously, while the pre-processing
+  may take a while (and will typically happen as the user is writing
+  the text).
+\item[DNA and Protein Sequences:] A lot of the important work in
+  biology, and computational biology specifically, is concerned with
+  finding strings in long strings. The long string may be either a
+  genome sequence (written as millions of characters from the set
+  $\SET{A,C,G,T}$) or a protein sequence (written over a 20-letter
+  alphabet). 
+
+  Substrings in a genome sequence may be indicative of genomic
+  predisposition for certain diseases. Common substrings between two
+  genomes may tell us something about common ancestors of two species;
+  or in the case of humans, if we look at several patients who
+  developed the same type of cancer, and they have a substring that
+  few other people have, we may investigate whether that subsequence
+  codes for this particular cancer.
+\end{description}
+
+So the ability to find occurrences of a given key (in this context
+often called \emph{pattern string}) in a given longer string is really
+essential; there are also quite a few related problems that we discuss
+later.
+
+Let's start by thinking about balanced search trees as a solution. 
+If we put $n$ strings in a search tree as keys, and each string has
+length $\Theta(\ell)$, then in order to find a given key, we have to
+search over $\Theta(\log n)$ levels of the tree. So far, we have
+pretended that comparisons between keys take time $O(1)$, but when we
+are thinking about strings of length $\ell$, we may have to revisit
+this assumption. It's more realistic that comparing two strings will
+take time $\Theta(\ell)$, so the total time for searching in a binary
+search tree with strings is $\Theta(\ell \log n)$. Our hope is that we
+can do better, and that's exactly what we'll explore in the next
+sections.
+
+\section{Tries}
+The name \emph{trie} derives from the middle letters of the word
+``retrieval,'' because it is a data structure designed for use in the
+context of text retrieval. The inventor pronounced it like ``tree,''
+but this led to sufficiently much confusion that the accepted
+pronunciation nowadays is as in ``try.''
+
+To explain how a trie works, let $S$ be a set of strings we wish to
+store. The trie is organized as a tree, but not necessarily a binary
+one. Each edge of the tree is labeled by a letter. 
+First, consider the first letter of each word in $S$, i.e., the set
+$L_0 = \Set{s[0]}{s \in S}$. 
+We have exactly one edge out of the root for each letter in $L_0$.
+Each endpoint of an edge is labeled with the same letter $x \in L_0$
+used to label the edge.
+
+Now, for each letter $x \in L_0$, let $L_1^x = \Set{s[1]}{s \in S,
+  s[0] = x}$ be the set of all letters that appear in the second
+position of some string in $S$ that starts with the letter $x$. 
+The node labeled $x$ has one outgoing edge for each element of
+$L_1^x$, labeled with the corresponding letter. For each such edge,
+say, with label $y$, the endpoint is labeled $xy$.
+
+More generally, suppose that we have a node labeled with a string
+$s'$ which is a prefix of length $k$ of a string $s \in S$; that is,
+$s'$ consists of the first $k$ characters of $s$. 
+Then, for each character $x$ such that there is a string in $S$ whose
+prefix is the concatenation $s' \circ x$, we have an edge out of
+the node labeled $s'$ to a node labeled $s' \circ x$, and the edge is
+labeled $x$. 
+
+When a string $s$ in a node is actually in the set $S$, then we store
+that information, along with the corresponding value, at the node
+corresponding to $s$. 
+
+If this sounded a bit strange and abstract, an example will likely
+illustrate it. Figure~\ref{fig:trie-example} shows the trie for the
+words ``heap'', ``hear'', ``hell'', ``help'', ``he'', ``in'',
+``ink'', ``irk'', ``she''.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,tpos=0.4,arrowsize=0.1 3}
+\begin{pspicture}(0,-7)(0,0.5)
+\pstree{\Toval{\phantom{x}}}
+        {
+	 \pstree{\Toval{h} \tlput{h}}
+                {
+                  \pstree{\Tdia{he} \tlput{e}}
+                        {
+                        \pstree{\Toval{hea} \tlput{a}}
+                                {
+                                 \Tdia{heap} \tlput{p}
+                                 \Tdia{hear} \trput{r}
+                                }
+                        \pstree{\Toval{hel} \trput{l}}
+                                {
+                                 \Tdia{hell} \tlput{l}
+                                 \Tdia{help} \trput{p}
+                                }
+                        }
+                }
+	 \pstree{\Toval{i} \tlput{i}}
+                {
+                  \pstree{\Tdia{in} \tlput{n}}
+                        {
+                         \Tdia{ink} \tlput{k}
+                        }
+                  \pstree{\Toval{ir} \trput{r}}
+                        {
+                         \Tdia{irk} \trput{k}
+                        }
+                }
+	 \pstree{\Toval{s} \trput{s}}
+                {
+                  \pstree{\Toval{sh} \trput{h}}
+                        {
+                         \Tdia{she} \trput{e}
+                        }
+                }
+        }
+\end{pspicture}
+\caption{The trie for the given words. Oval nodes are just
+  internal. Diamond-shaped nodes have key-value pairs associated with
+  them. Reading the edge labels along any path gives you exactly the
+  string for the node. \label{fig:trie-example}}
+\end{center}
+\end{figure}
+
+How to search in a trie should be pretty obvious. You start at the
+root. For the first step, you compare the first character of your key
+string $t$ with the edges leaving the root. If there's no match, $t$
+is not in the map. If there is, you follow that edge, and continue
+(iteratively or recursively) from the new root node with the next
+character from $t$. When you have followed edges for all characters of
+$t$, you have reached the node corresponding to $t$.
+
+Since each comparison of a single character takes only $\Theta(1)$ time,
+the entire search will take $\Theta(|t|)$, which is pretty much
+optimal, since surely, to search for a word, you must at least look at
+the entire word once.
+
+Building a trie should also be pretty clear: you insert the words one
+by one, following existing edges for each word $s$ as long as you can,
+and branching off when you have to.
+
+Notice that a trie does not have to have edges for each possible
+character in each position. It only needs edges for those that
+actually occur in at least one string in that position, following
+these specific letters. Thus, the size of the trie is at most the
+sum of lengths of all the words in the string.
+
+\subsection{An Application: Routing and IP Addresses}
+
+When you contact another computer, such as a server for Google or
+another web site, or the host machine for an online multi-player game
+you are playing, how does your computer know where to send its
+requests, and how does the server know where to send the relevant
+data? The answer is that in order to communicate on the Internet, each
+computer must have an \emph{IP address}, which is sort of its
+ID.\footnote{``IP'' stands for ``Internet Protocol.''}
+
+In IP v4, still in use a lot today, this address comprises 32
+bits. (IP v6 has longer addresses.) These 32 bits are typically
+written down as $x.y.z.w$, where each of the four numbers $x, y, z, w$
+has 8 bits and is thus between 0 and 255. The first 8 bits  ($x$)
+define a subnetwork, roughly corresponding to a major provider or
+similar entity. Later numbers get more and more specific, and $w$ is
+typically specific to your computer.
+
+When you want to send a request to a host, say,
+\code{google.com}, you first need an IP address. 
+To do so, your computer knows (often via its own subnetwork) about a
+domain name server (DNS), whose job it is to provide a mapping from
+names to IP addresses. 
+So your computer first contacts its DNS, who tells it that the IP
+address is 64.233.180.175. 
+(Google has a whole range of IP addresses, but this is one of them.)
+Then, your computer will try to send a message to 64.233.180.175.
+
+You do not typically have a direct connection to the host you are
+trying to reach, so instead, your request is routed along a number of
+routers on the Internet. You can think of each router as a specialized
+piece of hardware whose job it is to figure out where to take the next
+step on a (hopefully relatively short) path to the destination.
+
+Since routers are usually connected to a large number of other routers
+and machines, the router needs to know which of the many other routers
+to pass on a message with destination 64.233.180.175.
+This is where we need to implement a map: the key is the IP address,
+and the value is the outgoing link along which to route the message.
+This needs to run extremely fast, as routers have huge numbers of
+messages to deal with; in fact, most of these operations are
+implemented in hardware, rather than software, to make them faster.
+
+The IP address of the destination can be considered a string of 4
+characters, where each ``character'' is chosen among the 256 choices
+$0, \ldots, 255$. This view suggests that the right data structure
+(and the one used in practice) should be a trie. For instance, since
+all addresses starting with 64.233.180 belong to Google, the router
+doesn't need to look at the last character at all. In fact, it may be
+able to decide where to route the message even just looking at the 64
+at the beginning, perhaps because all addresses starting with 64 are
+in the same area (of the Internet).
+
+This idea of a tree structure in which some parts of the tree are much
+more finely subdivided (because you need more specific information)
+while others are not is actually very common all through computer
+science. For instance, many of the most important data structures for
+storing graphics objects (like quad-trees, oct-trees, KD-trees) are
+based on this idea, in some form or other. Tries are a good and easy
+way to learn about this idea first.
+
+\subsection{Path Compression}
+If you look back at our trie in Figure~\ref{fig:trie-example}, you
+will notice that it is a little bit wasteful. We generate lots of
+intermediate nodes even though they have only one outgoing edge. We
+could save some memory, and perhaps also traversal time, by
+compressing these paths into a single edge. Of course, the downside
+will be that we may later have to split such an edge back up, when we
+are trying to insert a new word whose path branches off the current
+path at some point. But that may be worth it. In
+Figure~\ref{fig:compressed-trie}, we have drawn the trie for the same
+set of words, but now in compressed form.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,tpos=0.4,arrowsize=0.1 3}
+\begin{pspicture}(0,-5.5)(0,0.5)
+\pstree{\Toval{\phantom{x}}}
+        {
+         \pstree{\Tdia{he} \tlput{he}}
+                {
+                 \pstree{\Toval{hea} \tlput{a}}
+                        {
+                         \Tdia{heap} \tlput{p}
+                         \Tdia{hear} \trput{r}
+                        }
+                 \pstree{\Toval{hel} \trput{l}}
+                        {
+                         \Tdia{hell} \tlput{l}
+                         \Tdia{help} \trput{p}
+                        }
+                }
+	 \pstree{\Toval{i} \tlput{i}}
+                {
+                  \pstree{\Tdia{in} \tlput{n}}
+                        {
+                         \Tdia{ink} \tlput{k}
+                        }
+                  \Tdia{irk} \trput{rk}
+                }
+	 \Tdia{she} \trput{she}
+        }
+\end{pspicture}
+\caption{The compressed trie for the same words as above. \label{fig:compressed-trie}}
+\end{center}
+\end{figure}
+
+Notice that by definition, each internal node either contains a key
+itself, or it must have at least two outgoing edges; otherwise, we
+would have pruned this node away.
+
+\section{Suffix Trees}
+Now that you have understood tries and compressed tries, \todef{suffix
+  trees} will be pretty easy. Given a string $s$ of length $n$, a
+suffix of $s$ starting at $i$ is the substring $s[i:n-1]$, i.e., it
+consists of the last characters of $s$ from position $i$ until the
+end. The suffix starting at 0 is simply the entire string $s$.
+Now, the suffix tree of $s$ is simply the compressed trie for all
+suffixes of $s$. In order to be a bit formal, we can also define it as
+follows: a suffix tree for the $n$-character string $s$ is:
+
+\begin{enumerate}
+\item A tree with $n$ leaves, labeled $0, \ldots, n-1$ (or
+  equivalently, the $n$ substrings $s[i:n-1]$ for all $i$).
+\item Each non-leaf node has at least two children.
+\item Each edge is labeled with a substring of $s$.
+\item If $e, e'$ are edges out of the same node, then the labels of
+  $e$ and $e'$ must start with different characters.
+\item For any root-leaf path (ending in the leaf labeled $i$), the
+  concatenation of the labels on the path is equal to $s[i:n-1]$.
+\end{enumerate}
+
+Before discussing in more detail why suffix trees are so useful, let's
+see an example, by drawing the suffix tree for the string MISSISSIPPI.
+It is a standard convention to always add a special character (for
+instance, `\$') at the end of the string; this helps ensure that we
+can draw the tree as described above. 
+The outcome is shown in Figure~\ref{fig:suffix-tree}. 
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,tpos=0.4,arrowsize=0.1 3}
+\begin{pspicture}(0,-5)(0,5)
+\pstree[treesep=1cm]{\pstree[treemode=R,levelsep=6cm]{\pstree[treemode=L,levelsep=4cm]{\pstree[treemode=U]{\Toval[fillstyle=solid,fillcolor=black]{\phantom{xy}}}
+               {
+                \pstree{\Toval{S} \trput{S}}
+                {
+                 \pstree{\Toval{SI} \tlput{I}}
+                        {
+                         \Tdia{SIPPI\$} \tlput{PPI\$}
+                         \Tdia{SISSIPPI\$} \trput{SSIPPI\$}
+                        }
+                 \pstree{\Toval{SSI} \trput{SI}}
+                        {
+                         \Tdia{SSIPPI\$} \tlput{PPI\$}
+                         \Tdia{SSISSIPPI\$} \trput{SSIPPI\$}
+                        }
+                }
+               }}
+               {\Tdia{\$} \taput{\$}}}
+               {\Tdia{MISSISSIPPI\$} \taput{MISSISSIPPI\$}}}
+        {
+         \pstree{\pstree[treemode=L,levelsep=3cm]{\Toval{I} \tlput{I}}
+                { \Tdia{I\$} \taput{\$}}}
+                {
+                  \Tdia{IPPI\$} \tlput{PPI\$}
+                  \pstree{\Toval{ISSI} \trput{SSI}}
+                         {
+                           \Tdia{ISSIPPI\$} \tlput{PPI\$}
+                           \Tdia{ISSISSIPPI\$} \tlput[tpos=0.6]{SSIPPI\$}
+                         }
+                }
+	 \pstree{\Toval{P} \trput{P}}
+                {
+                  \Tdia{PI\$} \tlput{I\$}
+                  \Tdia{PPI\$} \trput{PI\$}
+                }
+        }
+\end{pspicture}
+\caption{The suffix tree for MISSISSIPPI\$. The root is shown in
+  black, and in the middle of the diagram to maintain legibility.\label{fig:suffix-tree}}
+\end{center}
+\end{figure}
+
+To understand a bit better about how we constructed this suffix tree,
+first think of inserting each leaf directly under the root. 
+That would almost work, except it violates the fourth property.
+So all suffixes starting with `I' must share the same first step.
+Since the `I' is followed by different letters, we have to have an
+edge labeled just `I'. From there, the next character could be a `P',
+an `S', or a `\$'. If the next character is a `P', we actually know
+all the next characters (there is only a single suffix starting with
+`IP'), so we can just put the leaf right there. Similarly for the
+`\$'. If the next letter is an `S', then there are two options, but
+they share the `SSI' next, so we can label the edge with that entire
+substring. We can continue in this way.
+
+We constructed the tree by hand here, and if you take the algorithm we
+probably would have used, it will likely be $\Theta(n^2)$.
+The really cool thing is that there is an algorithm --- Ukkonen's
+algorithm --- which constructs a suffix tree of $s$ in time
+$\Theta(n)$.
+Also, notice that because we are compressing paths, the suffix tree
+always has $O(n)$ nodes: it has $n$ leaves, and each internal node has
+degree at least 2. If we didn't do path compression, then you can see
+that the string ``abcde$\ldots$xyz'' would have $\Omega(n^2)$ nodes,
+which means we can't construct it in time $O(n)$.
+
+Ok, so why are suffix trees so useful that textbooks on strings devote
+hundreds of pages to them? Let's look at a few applications, and how
+to solve them easily:
+
+\begin{itemize}
+\item Find a pattern string $t$ in $s$: Here, we can simply modify our
+  original search algorithm for tries to use the multiple characters
+  in tries. It therefore takes $O(m)$, and the total time ---
+  including building the suffix tree --- is $O(n+m)$, i.e., just the
+  time to look at each string once.
+
+  Compare this to the ``obvious'' (brute force) algorithm for string
+  search. You'd try each of $(n-m)$ positions as a start position, and
+  then compare the $m$ characters of $t$ one by one with the
+  corresponding characters of $s$. This would take $\Theta(m (n-m)) =
+  \Theta(mn)$, i.e., the product of the string lengths.
+  Going to $\Theta(n+m)$ is a huge improvement.
+
+  There are two classic algorithm for this string matching problem
+  that run in time $O(n+m)$: Boyer-Moore and Knuth-Morris-Pratt. 
+  Traditionally, algorithms classes would devote significant time to
+  these two algorithms, which are not exactly trivial (though not very
+  hard, either). Once you know that you can build a suffix tree in
+  linear time (which is not trivial, either), you don't need the
+  specialized algorithms any more.
+
+  And of course, string matching is a really important task, as
+  evidenced by the examples we looked at in the introduction to this
+  chapter. 
+
+\item Count the number of times that $t$ occurs in $s$: This is very
+  similar to the previous problem, but we would normally have to
+  modify the Boyer-Moore or Knuth-Morris-Pratt algorithms in
+  significant ways. Now, instead, we can find another very simple
+  algorithm. Follow the suffix tree path for $t$ to reach some node
+  $v$. Now simply count the number of leaves in the subtree rooted at
+  $v$. That's the number of times $t$ occurs in $s$.
+
+\item Find the longest common substring of $s$ and $t$, i.e., the
+  longest string $w$ that occurs both in $s$ and in $t$. Again, this
+  problem has applications in computational biology, where you may
+  want to look for the longest genetic overlap between two species or
+  individuals. (Typically, you'd be happy with approximate matches,
+  i.e., a few mismatched characters would be ok. But this example
+  still illustrates the importance of these types of problems.)
+
+  There are several solutions based on suffix trees. One of the
+  easiest ones is to build a suffix tree for the string $s\#t\$$,
+  where both `\#' and `\$' are new special characters.
+  For each node of the suffix tree, mark whether it corresponds to a
+  string that occurs in $s$, in $t$, or in both. (This can be done
+  with Ukkonen's algorithm.) Now, just look for the deepest node that
+  is labeled with both $s$ and $t$ --- this can be done easily in
+  linear time by searching through all the nodes of the tree.
+
+  So we get a linear time algorithm for this problem, which initially
+  looks like even $O(nm)$ would be quite ambitious.
+\end{itemize}
+
+There are quite a few more similar applications of suffix trees. 
+The nice thing is how they unify so many different string matching
+algorithms: practically all of the fastest algorithms can instead be
+implemented by building a suffix tree, then doing something really
+quite easy. So knowing about suffix trees can be an incredibly helpful
+tool for designing efficient algorithms.

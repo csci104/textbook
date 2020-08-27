@@ -1,0 +1,1237 @@
+\newcommand{\Leaf}{\Tcircle[fillstyle=solid,fillcolor=black]{\phantom{.}}}
+%{\TC*}
+
+In the next few chapters, we will learn of the two typical ways of
+implementing maps: Search Trees and Hashtables.
+Remember that in a map, we store associations between keys and values.
+We need to be able to insert and remove such associations, and to look
+up the associated value for a given key.
+We already saw a brief preview of Search Trees in Section~\ref{sec:trees.search-trees}.
+There, we only showed the keys in our graphic depiction.
+In this and the next chapter, we will do the same thing. 
+However, even though we only show keys in our diagrams, it is implied
+that for each key, there is also an associated value stored, and that
+looking up this value is really the main reason for studying trees in
+the first place.
+
+Also, for maps, one typically assumes that there can only be one copy
+of each key. If you explicitly want multiple copies of the same key,
+you would call it a multi-map. It makes some implementation details
+more messy, and we want to focus on the essentials here. So from now
+on, in all of our examples, we will not have the possibility of
+duplicates among the keys.
+
+\section{Balancing Trees and Rotations}
+As we discussed when we got started on search trees, the important
+thing is to keep the height bounded by $O(\log n)$, so that search
+(and insertion and deletion) is fast. In order to do that, you want
+the search trees to be ``balanced,'' in the sense that all the
+subtrees of a given node are ``similar'' in height or number of nodes.
+The goal of constructions such as AVL Trees (this chapter) and
+Red-Black Trees (Chapter~\ref{chap:red-black-trees}) is to 
+impose certain rules on the trees that will trigger small-scale
+restructuring whenever trees get too unbalanced. 
+``Small-scale'' means that we want to spend at most 
+time $O(\log n)$ per insertion or deletion.
+For AVL trees, these rules involve comparing the heights of the two
+subtrees at each node, and making sure they do not differ by more than 1. 
+For Red-Black Trees, we define rules for coloring nodes (motivated by
+2-3 trees), which will have a similar effect.
+
+To get a feeling for how to make this work, let's revisit the bad tree
+from Figure~\ref{fig:degenerate-tree}. 
+How could such a tree have been generated?
+Quite easily: If we start by inserting 11, then 10 as its left child,
+then 9 as 10's left child, etc., we'll get exactly that bad tree.
+Perhaps along the way, we should have realized that things weren't
+going so well, and started fixing them before they got too out of
+whack. Specifically, the first time something seems awry is when we
+insert 9 as the left child of 10. At the point, we have produced a
+tree of height 3 when we could have produced one of height 2 by making
+10 the root. So perhaps we should fix the tree right then.
+What we'd be doing would be the following:
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.5cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(-7,-3)(7,3)
+\rput(-8,0){%
+\pstree{\Tcircle{11}}
+       {
+         \pstree{\Tcircle{10}}
+                {
+                \Tcircle{09}
+                \Leaf
+                }
+         \Leaf
+       }
+} 
+
+\psline[doubleline=true]{->}(-2,0)(2,0) 
+\rput(0,1){Right Rotation}
+
+\rput(8,0){%
+\pstree{\Tcircle{10}}
+       {
+        \Tcircle{09}
+        \Tcircle{11}
+       }
+}
+\end{pspicture}
+\caption{Fixing a 3-node tree.\label{fig:AVL-bad-fix}}
+\end{center}
+\end{figure}
+
+What we did here is called a \todef{rotation}, or more specifically, a
+\todef{right-rotation}. The node 10 rotated to the root, and 11,
+previously its parent, became its right child.
+Rotations can be performed for arbitrary trees, and they are our
+primary (or really, only) tool in fixing imbalances in search trees.
+More generally, they look as follows:
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.5cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(-7,-4)(7,4)
+\rput(-8,0){%
+\pstree{\Tcircle{$v$}}
+       {
+         \pstree{\Tcircle{$u$}}
+                {
+                 \pstree{\Tp}{\Ttri{$T_1$}}
+                 \pstree{\Tp}{\Ttri{$T_2$}}
+                }
+         \pstree{\Tp}{\Ttri{$T_3$}}
+       }
+}
+
+\psline[doubleline=true]{->}(-2,1)(2,1) 
+\rput(0,2){Right Rotation at $v$}
+\psline[doubleline=true]{<-}(-2,-1)(2,-1) 
+\rput(0,-2){Left Rotation at $u$}
+
+\rput(9,0){%
+\pstree{\Tcircle{$u$}}
+       {
+         \pstree{\Tp}{\Ttri{$T_1$}}
+         \pstree{\Tcircle{$v$}}
+                {
+                  \pstree{\Tp}{\Ttri{$T_2$}}
+                  \pstree{\Tp}{\Ttri{$T_3$}}
+                }
+       }
+}
+
+\end{pspicture}
+\caption{Right/Left Rotations.\label{fig:AVL-rotations}}
+\end{center}
+\end{figure}
+
+Notice that the rotations generalize what we did for the 3-node tree. 
+In the right rotation, $u$, which was a left child of $v$, becomes its
+parent, and $v$ becomes the right child of $u$. 
+In the left rotation, $v$, which used to be a right child of $u$,
+becomes its parent, while $u$ becomes the left child of $u$.
+Notice that all keys in $T_1$ are smaller than $u$, the keys in $T_2$
+are between $u$ and $v$, and the keys in $T_3$ are larger than $v$. 
+Thus, they are all in legal positions after the rotation.
+
+\section{The AVL Tree Balance Property}
+\label{sec:AVL:balance}
+AVL trees (named after their inventors Adelson-Velskij and Landis)
+were the first search tree construction to explicitly guarantee an
+$O(\log n)$ height at all times. 
+The approach is to explicitly keep them ``height-balanced.''
+AVL trees are binary search trees with the property that each non-leaf
+node has either 0 or 2 children. 
+All the data are stored in the non-leaf nodes. 
+In this sense, you can really think of leaves as just \code{null}
+pointers, and the ``0 or 2'' requirement as there mostly to simplify
+the way we talk about the trees. The key property is the following:
+
+\begin{quote}
+For every node $v$, let its left and right subtrees be $T^v_{\ell}$ and $T^v_r$.
+Then, the heights of $T^v_{\ell}$ and $T^v_r$ must differ by at most 1.
+\end{quote}
+
+Just as a thought experiment, let's replace `1' with `0' in that
+condition. 
+Then, at every node, all subtrees have to have the same height. 
+It is quite an easy proof (induction) that the only trees satisfying
+this condition are full binary trees, which is much too restrictive.
+So the condition is kind of the best one could hope for in terms of
+height balance.
+
+Intuitively, it feels like a binary tree with the AVL property should
+be relatively shallow, i.e., have small height. 
+Next, let's verify this intuition.
+Just as we did when analyzing the height of a priority queue in
+Section~\ref{sec:priority-queues:running-time}, the best way to answer
+the question ``How high is an AVL tree with $n$ nodes?'' is to 
+first answer the question ``How many nodes must an AVL tree
+of height $h$ contain?''
+It turns out that this analysis is most easily carried out if instead
+of all nodes, we focus on just the number of leaves.\footnote{We could
+  do it for all nodes, but the formulas would look a little less
+  familiar; it's not really much harder, just not as obvious for
+  someone early in their CS career.}
+This really is not a problem, because for every tree, the number of
+leaves is one more than the number of internal nodes, so we can easily
+reconstruct the number of keys.
+
+So let's denote the minimum number of leaves in an AVL tree of height
+$h$ by $L_h$. 
+(To be precise, we count the height without the leaves, so a single
+internal node with two leaves will be counted as height 1.)
+For height 1, the answer is $L_1=2$, and for height 2, it is $L_2=3$.
+For height $h$, we have one root node $v$ with two subtrees
+$T^v_{\ell}$ and $T^v_r$. 
+One of them must have height $h-1$, and the other one must have height
+$h-1$ or $h-2$, because the heights cannot differ by more than 1.
+Because an AVL tree of height $h-1$ contains more nodes than a
+smallest AVL tree of height $h-2$, and the leaves of the entire tree
+are exactly those of one subtree plus those of the other, we get that
+$L_{h} \geq  L_{h-1} + L_{h-2}$.
+When aiming for the smallest number, we may as well write equality
+instead of `$\geq$', and we get a recurrence relation.
+So now, we want to solve
+\begin{align*}
+L_1 & = 2\\
+L_2 & = 3\\
+L_h & = L_{h-1} + L_{h-2} \quad \text{ for } h \geq 3
+\end{align*}
+
+Except for the initial values, this should look familiar to you: it's
+exactly the Fibonacci series. And if we added $L_0 = L_{-1} = 1$, 
+we would exactly get the Fibonaccy series definition.
+So if $F_h$ is the \Kth{h} Fibonacci number, we have shown that
+a smallest AVL tree with height $h$ has at least $F_{h+2}$ leaves.
+
+Next, we need to figure out just how big $F_h$ is.
+You probably already solved this at some point as a homework exercise.
+It's not that difficult to show (induction) that
+\begin{align*}
+F_h & = \frac{1}{\sqrt{5}} \left( \left( \frac{1+\sqrt{5}}{2} \right)^{h+1}
+- \left( \frac{1-\sqrt{5}}{2} \right)^{h+1} \right).
+\end{align*}
+
+This formula looks a bit ugly, but by looking closely, we can simplify
+it. First, $-1 < \frac{1-\sqrt{5}}{2} < 1$, so the term
+$\left( \frac{1-\sqrt{5}}{2} \right)^{h+1}$ will always be
+between $-1$ and $+1$. (That means it really doesn't matter much.)
+And because $\frac{1+\sqrt{5}}{2} = 1.618\ldots$ looks scary, let's
+just call it $\phi$, which is its standard name. 
+It's called the ``golden ratio.''
+Then, we get that
+$F_h \geq \frac{1}{\sqrt{5}} \cdot \phi^{h+1} - 1$.
+And from this, we get that
+\begin{align*}
+L_h & \geq \frac{1}{\sqrt{5}} \cdot \phi^{h+3} - 1
+\; \geq \; \frac{\phi^3}{\sqrt{5}} \cdot \phi^h - 1.
+\end{align*}
+So the number of internal nodes (and thus keys) in an AVL tree of
+height $h$ is at least $\frac{\phi^3}{\sqrt{5}} \cdot \phi^h - 2$.
+We can now solve this inequality for $h$, and obtain that
+an AVL tree with $n$ keys has height at most
+\begin{align*}
+\log_{\phi} (\frac{\sqrt{5}}{\phi^3} \cdot (n+2))
+& = \log_{\phi} (\sqrt{5}) - 3 + \log_{\phi} (n+2)
+\; = \; 1.4404\ldots \cdot \log_2(n+2) - 1.327\ldots.
+\end{align*}
+In particular, the height is only about a factor $1.44$ larger than
+the height of a complete binary tree, and it is $O(\log n)$.
+This means that searching in an AVL tree with $n$ keys takes time
+$O(\log n)$, as we would like it to.
+
+So next, we need to see how to implement insertions and removals to
+maintain this height difference property.
+
+\section{Inserting into an AVL Tree}
+In order to be able to keep the subtrees balanced, it appears that we
+need to know the height of the subtree at each node.
+It turns out that storing somewhat less information is sufficient:
+we can store at each node $v$ just the height difference between the
+two subtrees $T^v_{\ell}$ and $T^v_r$.
+This difference can only be $-1, 0$ or $1$ in a legal AVL tree,
+depending on whether the left subtree is higher (-1), the right
+subtree is higher (1), or they have the same height (0).
+We denote the difference by $b(v)$ (for \emph{balance}).
+We will see as we go through the operations that the values $b(v)$ at
+all nodes are enough information to implement insertion and removal.
+When we draw tree structure, we will put $b(v)$ next to $v$,
+to distinguish it from the key stored in the node. 
+(We will often omit the key when it is not relevant.)
+
+To insert a key, one always starts by searching for it.
+If the key is found, then one throws an error, or updates the value
+associated with it, or whatever else is the desired behavior.
+The search will end at a leaf node $v$, and the new key is inserted into
+this leaf node, turning it into an internal node with two leaf
+children. The new node then has balance $b(v) = 0$.
+However, the insertion might change the balance at nodes higher up in
+the tree, and we might have to fix the tree (with rotations).
+For instance, consider the following small tree, resulting from
+inserting 5 into a tree with numbers 4 and 7.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(-3,-3)(3,3)
+\rput(0,0){%
+\pstree{\Tcircle{7}}
+       {
+         \pstree{\Tcircle{4}}
+                {
+                \Leaf
+                \pstree{\Tcircle{5}}
+                       {
+                        \Leaf
+                        \Leaf
+                       }                    
+                }
+        \Leaf
+       }
+}
+\end{pspicture}
+\caption{An imbalance (at node 7) is created by inserting 5.\label{fig:AVL-imbalance}}
+\end{center}
+\end{figure}
+
+So we now explore whether an imbalance is (potentially) created, and
+how to fix it if so. For the following discussion, let $p$ be the
+parent of the newly inserted node $v$. There are three possible cases:
+
+\begin{enumerate}
+\item $b(p) = -1$ before the insertion. 
+Because $v$ replaced a leaf, this means that the tree rooted at $p$
+looked as shown in Figure~\ref{fig:AVL-insert-minus-1} and is fixed as
+shown there, because $v$ must be inserted as the right child of $p$.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(-3,-3)(3,3)
+\rput(-4,0){%
+\pstree{\Tcircle{$p$}~[tnpos=r]{-1}}
+       {
+         \pstree{\Tcircle{\phantom{p}}~[tnpos=r]{0}}
+                {
+                \Leaf
+                \Leaf
+                }
+         \Leaf
+       }
+}
+
+\psline[doubleline=true]{->}(-1,0)(1,0) 
+\rput(0,1){Insertion of $v$}
+
+\rput(4,0){%
+\pstree{\Tcircle{$p$}~[tnpos=r]{0}}
+       {
+         \pstree{\Tcircle{\phantom{p}}~[tnpos=r]{0}}
+                {
+                \Leaf
+                \Leaf
+                }
+         \pstree{\Tcircle{$v$}~[tnpos=r]{0}}
+                {
+                \Leaf
+                \Leaf
+                }
+       }
+}
+\end{pspicture}
+\caption{Inserting $v$ into a subtree with imbalance -1. No further
+  action is needed.\label{fig:AVL-insert-minus-1}}
+\end{center}
+\end{figure}
+Because the height of the tree rooted at $p$ did not change (only the
+balance at $p$), no further action up the tree is needed, and we are done.
+The total time here is $O(1)$.
+
+\item $b(p) = 1$ before the insertion. 
+This case is completely symmetric to the previous one. 
+$v$ is inserted as the left child of $p$, resulting in a new balance
+of 0 at $p$.
+
+\item $b(p) = 0$ before the insertion. 
+This is the case we saw in Figure~\ref{fig:AVL-imbalance}.
+Depending on whether $v$ is inserted as the left or right child of
+$p$, the balance of $p$ changes to -1 or 1. In either case, the
+subtree rooted at $p$ has grown by 1 in height, which creates a risk
+of a greater imbalance at an ancestor of $p$. 
+In this case, we call a recursive function \code{insert-fix(p)} on the
+parent; we derive and analyze this function next.
+\end{enumerate}
+
+\subsection{The Insert-Fix function}
+We will ensure that whenever \code{insert-fix(v)} is called on a node
+$v$, the (new) balance $b(v) \in \SET{-1, 1}$, and the tree rooted at $v$
+has grown in height by 1.
+The easiest case is when $v$ is the root of the tree; then, we're done.
+Otherwise, let $p$ be the parent of $v$. 
+
+For the following description, we will assume that $v$ is the left
+child of $p$. The other case is completely symmetric; just look at
+these notes in a mirror, or substitute `right' and `left' for each
+other everywhere they occur. (Also, you need to substitute some `-1'
+and `1' for each other.)
+
+We distinguish three cases, based on the balance at $p$.
+\begin{enumerate}
+\item If $b(p) = 1$ before the insertion, then the right subtree of
+  $p$ was one level higher than the left subtree, and the left subtree
+  has grown by one level. 
+  So now, the two subtrees have the same height, and we can just set
+  $b(p) = 0$, and we're done. This is because the height of the
+  subtree at $p$ has not grown (only its smaller tree has).
+
+\item If $b(p) = 0$ before the insertion, then the subtrees had equal
+  heights. This means that now, $b(p) = -1$, because the left subtree
+  has grown in height. But this also means that the height of the
+  entire subtree rooted at $p$ has grown by 1. 
+  So the imbalance at $p$ is not too large, but there is still a
+  chance that a problem exists further up in the tree.
+  Hence, we recursively call \code{insert-fix(p)}. 
+  Notice that the conditions for doing so are met: the new value of
+  $b(p)$ is $-1$ or $1$, and the subtree rooted at $p$ has grown in
+  height by 1.
+
+\item If $b(p) = -1$ before the insertion, then the left subtree was
+  already one level higher, and it has grown by one level. 
+  Thus, the imabalance at $p$ is too large, and we have to actually fix
+  something. How exactly we do the fixing depends on whether the
+  balance at $v$ is $-1$ or $1$. 
+
+\begin{enumerate}
+\item The first case, when the balance at $v$ is $-1$, is slightly easier.
+The situation is as shown on the left in Figure~\ref{fig:AVL-insert-one-rotation}.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.5cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(-9,-4)(9,4)
+\rput(-8,0){%
+\pstree{\Tcircle{$p$}~[tnpos=r]{-1}}
+       {
+         \pstree{\Tcircle{$v$}~[tnpos=r]{-1}}
+                {
+                 \pstree{\Tp}{\Ttri{$T_1$}~{$h$}}
+                 \pstree{\Tp}{\Ttri{$T_2$}~{$h-1$}}
+                }
+         \pstree{\Tp}{\Ttri{$T_3$}~{$h-1$}}
+       }
+}
+
+\psline[doubleline=true]{->}(-2,0)(2,0) 
+\rput(0,1){Right Rotation at $p$}
+
+\rput(9,0){%
+\pstree{\Tcircle{$v$}~[tnpos=r]{0}}
+       {
+         \pstree{\Tp}{\Ttri{$T_1$}~{$h$}}
+         \pstree{\Tcircle{$p$}~[tnpos=r]{0}}
+                {
+                 \pstree{\Tp}{\Ttri{$T_2$}~{$h-1$}}
+                 \pstree{\Tp}{\Ttri{$T_3$}~{$h-1$}}
+                }
+       }
+}
+
+\end{pspicture}
+\caption{A right rotation fixes the imbalance when both $v$ and $p$
+  have balance -1.\label{fig:AVL-insert-one-rotation}}
+\end{center}
+\end{figure}
+
+Because the balance at $v$ is -1, we know that $T_1$ is one higher
+than $T_2$; let's use $h$ to denote the height of $T_1$.
+And because the balance at $p$ was -1 before the insertion, the height
+of the subtree rooted at $v$, which is $h+1$ is two larger than the
+height of $T_3$. In the figure, we have denoted the heights.
+
+Now, we perform just a right rotation at $p$. This gives $p$ two
+subtrees ($T_2$ and $T_3$) of height $h-1$, and $v$ two subtrees of
+height $h$ each. As a result, the balance at both becomes 0.
+Furthermore, the height of the entire tree (now rooted at $v$) is
+$h+1$, which is exactly the height of this subtree before the
+insertion. 
+Hence, as far as the rest of the tree is concerned, this subtree
+hasn't changed, and we need no further recursive calls.
+
+\item When the balance at $v$ is 1, the situation is as shown on the
+  left in Figure~\ref{fig:AVL-insert-two-rotations}.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.3cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(-13,-8)(13,8)
+\rput(-16,0){%
+\pstree{\Tcircle{$p$}~[tnpos=r]{-1}}
+       {
+         \pstree{\Tcircle{$v$}~[tnpos=r]{1}}
+                {
+                 \pstree{\Tp}{\Ttri{$T_1$}~{$h-1$}}
+                 \pstree{\Tcircle{$u$}}
+                        {
+                         \pstree{\Tp}{\Ttri{$T_2$}~{$h'$}}
+                         \pstree{\Tp}{\Ttri{$T_3$}~{$h''$}}
+                        }
+                }
+         \pstree{\Tp}{\Ttri{$T_4$}~{$h-1$}}
+       }
+}
+
+\psline[doubleline=true]{->}(-2.5,0.5)(2.5,0.5) 
+\rput(0,3.5){Left Rotation at $v$}
+\rput(0,2){Then Right Rotation at $p$}
+
+\rput(16,0){%
+\pstree{\Tcircle{$u$}~[tnpos=r]{0}}
+       {
+         \pstree{\Tcircle{$v$}}
+                {
+                 \pstree{\Tp}{\Ttri{$T_1$}~{$h-1$}}
+                 \pstree{\Tp}{\Ttri{$T_2$}~{$h'$}}
+                }
+         \pstree{\Tcircle{$p$}}
+                {
+                 \pstree{\Tp}{\Ttri{$T_3$}~{$h''$}}
+                 \pstree{\Tp}{\Ttri{$T_4$}~{$h-1$}}
+                }
+       }
+}
+\end{pspicture}
+\caption{A left rotation at $v$ followed by a right rotation at $p$
+  fixes the imbalance when $v$ has balance 1 and $p$ 
+  has balance -1.\label{fig:AVL-insert-two-rotations}}
+\end{center}
+\end{figure}
+Here, the relationship between the heights needs a bit more thought.
+Let $h$ be the height of the subtree rooted at $u$.
+Because the balance at $v$ (after the insertion and any adjustments we
+have made) is 1, the height of $T_1$ is $h-1$.
+In order for the subtree at $u$ to have height $h$, at least one of
+$T_2$ and $T_3$ has height $h-1$; so $h'$ or $h''$ is equal to $h-1$,
+and the other is $h-1$ or $h-2$.\footnote{In fact, the other one of
+  $h', h''$ must be $h-2$. For if it were $h-1$ as well, then why
+  would we be fixing anything? As we are currently seeing, as soon as
+  one rotation is made, the tree is all fixed. So we haven't performed
+  any rotation yet. But then, never mind which of $T_1, T_2, T_3$ has
+  grown by one level, the height of the tree rooted at $v$
+  could not have increased by 1, because one of $T_2, T_3$ already had
+  the same height earlier.}
+Because the subtree rooted at $v$ had height $h$ before the insertion,
+and the balance at $p$ is -1, $T_4$ must have height $h-1$. 
+
+You can verify easily that in this situation, just a right rotation
+won't do, because the subtree rooted at $u$ would be brought entirely
+to the right, creating a balance of +2 at the new root $v$.
+But instead, we can use a left rotation at $v$ to first bring about
+the situation from the previous case
+(Figure~\ref{fig:AVL-insert-one-rotation}) and then do one right
+rotation to fix it. 
+The resulting double rotation is shown in Figure~\ref{fig:AVL-insert-two-rotations}. 
+
+Notice that the balance at $v$ could be 0 or -1, and the one at $p$
+could be 0 or 1, but the balance at $u$ will always be 0, because the
+height of both its subtrees is $h$. So the imabalance has been fixed.
+Furthermore, the new height of the tree rooted at $u$ is again the
+same as the old height of the tree rooted at $p$, meaning that no
+balance at any ancestor node can have changed.
+So again, no further recursive calls are needed.
+\end{enumerate}
+\end{enumerate}
+
+\subsection{Running Time Analysis}
+The initial step (creating a new node for the key) clearly takes
+constant time, so the running time is dominated by \code{insert-fix}.
+At each level, we just perform a constant number of comparisons
+(inspecting the values of $b(p), b(v)$) and possibly a constant number
+of rotations, which just means changing a constant number of pointers.
+Thus, at each level, \code{insert-fix} takes constant time, and the
+running time is just the height of the tree. 
+And we already derived in Section~\ref{sec:AVL:balance} that the
+height is $O(\log n)$. 
+Hence, insertion into AVL trees takes time $O(\log n)$.
+
+\subsection{An Example of some insertions}
+Let's practice AVL insertions a little bit by starting from our
+example in Figure~\ref{fig:AVL-imbalance}, fixing that imbalance, and
+then inserting a couple more keys.
+
+Figure~\ref{fig:AVL-insertion-sequence-1} shows the state of the tree
+and all its balance counters right after 5 is inserted, but before we
+have updated anything. Then, we see how \code{insert-fix} works its
+way up. 
+In each step, the gray node is the one which \code{insert-fix} is
+currently working on. 
+To make the figure more legible, we are omitting all leaf nodes.
+For node 4, no structural change is needed; only the balance
+information is updated, causing a recursive call to the root.
+At the root, we are immediately in the most interesting case,
+requiring a left rotation (at 4) followed by a right rotation at 7.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(-12,-2)(14,2)
+\rput(-8,0){%
+\pstree{\Tcircle{7}~[tnpos=r]{-1}}
+       {
+         \pstree{\Tcircle[fillstyle=solid,fillcolor=lightgray]{4}~[tnpos=r]{0}}
+                {
+                \Tn
+                \Tcircle{5}~[tnpos=r]{0}
+                }
+        \Tn
+       }
+}
+
+\psline[doubleline=true]{->}(-6,0)(-4,0) 
+\rput(-5,1){Relabel at 4}
+
+\rput(0,0){%
+\pstree{\Tcircle[fillstyle=solid,fillcolor=lightgray]{7}~[tnpos=r]{-1}}
+       {
+         \pstree{\Tcircle{4}~[tnpos=r]{1}}
+                {
+                \Tn
+                \Tcircle{5}~[tnpos=r]{0}
+                }
+        \Tn
+       }
+}
+
+\psline[doubleline=true]{->}(4,0)(6,0) 
+\rput(5,1.75){Left Rotation at 4}
+\rput(5,1){Then Right Rotation at 7}
+
+\rput(10,0){%
+\pstree{\Tcircle{5}~[tnpos=r]{0}}
+       {
+         \Tcircle{4}~[tnpos=r]{0}
+         \Tcircle{7}~[tnpos=r]{0}
+       }
+}
+\end{pspicture}
+\caption{Fixing the result of inserting 5.\label{fig:AVL-insertion-sequence-1}}
+\end{center}
+\end{figure}
+
+Next, we insert the key 8; Figure~\ref{fig:AVL-insertion-sequence-2}
+shows how \code{insert-fix} relabels the tree.
+This case is easier. As \code{insert-fix} works its way up the
+tree, at each of the stages, it just needs to relabel the balance at
+some node by 1. Eventually, it reaches the root, and is done.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(-12,-2)(12,2)
+\rput(-10,0){%
+\pstree{\Tcircle{5}~[tnpos=r]{0}}
+       {
+         \Tcircle{4}~[tnpos=r]{0}
+         \pstree{\Tcircle[fillstyle=solid,fillcolor=lightgray]{7}~[tnpos=r]{0}}
+                {
+                \Tn
+                \Tcircle{8}~[tnpos=r]{0}
+                }
+       }
+}
+
+\psline[doubleline=true]{->}(-6,0)(-4,0) 
+\rput(-5,1){Relabel at 7}
+
+\rput(0,0){%
+\pstree{\Tcircle[fillstyle=solid,fillcolor=lightgray]{5}~[tnpos=r]{0}}
+       {
+         \Tcircle{4}~[tnpos=r]{0}
+         \pstree{\Tcircle{7}~[tnpos=r]{1}}
+                {
+                \Tn
+                \Tcircle{8}~[tnpos=r]{0}
+                }
+       }
+}
+
+\psline[doubleline=true]{->}(4,0)(6,0) 
+\rput(5,1){Relabel at 5}
+
+\rput(10,0){%
+\pstree{\Tcircle{5}~[tnpos=r]{1}}
+       {
+         \Tcircle{4}~[tnpos=r]{0}
+         \pstree{\Tcircle{7}~[tnpos=r]{1}}
+                {
+                \Tn
+                \Tcircle{8}~[tnpos=r]{0}
+                }
+       }
+}
+\end{pspicture}
+\caption{Fixing the result of inserting 8.\label{fig:AVL-insertion-sequence-2}}
+\end{center}
+\end{figure}
+
+Finally, in Figure~\ref{fig:AVL-insertion-sequence-3}, we look at what
+happens when the key 9 is inserted.
+Again, we begin with relabeling its parent.
+Then, because the imbalance at node 7 has grown too big, we need to
+rotate. In this case, a simple left rotation is enough. Because it
+decreases the height of the subtree by 1, \code{insert-fix} can
+terminate here without even looking at the root.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(-12,-2.5)(12,2.5)
+\rput(-10,0){%
+\pstree{\Tcircle{5}~[tnpos=r]{1}}
+       {
+         \Tcircle{4}~[tnpos=r]{0}
+         \pstree{\Tcircle{7}~[tnpos=r]{1}}
+                {
+                \Tn
+                \pstree{\Tcircle[fillstyle=solid,fillcolor=lightgray]{8}~[tnpos=r]{0}}
+                       {
+                        \Tn
+                        \Tcircle{9}~[tnpos=r]{0}
+                       }
+                }
+       }
+}
+
+\psline[doubleline=true]{->}(-6,0)(-4,0) 
+\rput(-5,1){Relabel at 8}
+
+\rput(0,0){%
+\pstree{\Tcircle{5}~[tnpos=r]{1}}
+       {
+         \Tcircle{4}~[tnpos=r]{0}
+         \pstree{\Tcircle[fillstyle=solid,fillcolor=lightgray]{7}~[tnpos=r]{1}}
+                {
+                \Tn
+                \pstree{\Tcircle{8}~[tnpos=r]{1}}
+                       {
+                        \Tn
+                        \Tcircle{9}~[tnpos=r]{0}
+                       }
+                }
+       }
+}
+
+\psline[doubleline=true]{->}(4,0)(6,0) 
+\rput(5,1){Left Rotation at 7}
+
+\rput(10,0){%
+\pstree{\Tcircle{5}~[tnpos=r]{1}}
+       {
+         \Tcircle{4}~[tnpos=r]{0}
+         \pstree{\Tcircle{8}~[tnpos=r]{0}}
+                {
+                \Tcircle{7}~[tnpos=r]{0}
+                \Tcircle{9}~[tnpos=r]{0}
+                }
+       }
+}
+
+\end{pspicture}
+\caption{Fixing the result of inserting 9.\label{fig:AVL-insertion-sequence-3}}
+\end{center}
+\end{figure}
+
+\section{Removal from AVL Trees}
+To remove a key $k$ from an AVL tree, we first search for it.
+If $k$ is not in the tree, then we throw an error, or don't do
+anything, or whatever else is the desired behavior. 
+In any case, the tree is not changed.
+Otherwise, let's say that the search terminated at some node $v$ which
+contained the key $k$.
+
+We distinguish three cases, depending on how many non-leaf children
+$v$ has.
+
+\begin{enumerate}
+\item If $v$ has two leaves as children, then we can just delete the
+  key from $v$, turning it into a leaf (and get rid of its two leaf
+  children). As a result, $v$ will have new balance $b(v) = 0$, and
+  its subtree has decreased in height by 1.
+  Since this may cause problems further up in the tree, we 
+  call $\code{remove-fix(v)}$. 
+  In all (later recursive) calls of \code{remove-fix}, we will have
+  the property that the new balance is $b(v) = 0$, and the tree rooted
+  at $v$ has decreased in height by 1.
+\item If $v$ has one leaf child and one non-leaf child $u$, then $u$
+  must have two leaf children (otherwise, the AVL property would be
+  violated at $v$). Then, we put $u$'s key into $v$, and delete the
+  node $u$ from the tree, replacing it by a leaf.
+  As a result, the new balance at $v$ is $b(v) = 0$, and the subtree
+  rooted at $v$ has decreased in height by 1.
+  As in the previous case, we now call $\code{remove-fix(v)}$.
+\item If $v$ has two non-leaf children, then we do what one (almost)
+  always does when trying to delete a key from an internal node.
+  We search for the successor key $k'$, that is, the smallest key 
+  $k' > k$ in the tree.  
+  The successor key\footnote{We could just as well use the
+  predecessor: the largest $k'$ smaller than $k$. 
+  Finding it is symmetric to the successor, switching ``left''
+  and ``right'' in the preceding description.} is easy to find: 
+  we go to the right child of $v$ (which we assumed exists), 
+  and then go to the left child at any
+  subsequent node that has a left child. This will terminate at a node
+  (call it $u$) with no left child, and its key $k'$ is the successor.
+
+  As we discussed, once we find $k'$, we put it (and its value) into
+  $v$ instead of $k$. 
+  Then, we delete it from $u$. Because $u$ does not have a left child
+  (the search terminated at a node with no left child), we must be in
+  one of the previous two cases, so we can just follow the description
+  there. 
+\end{enumerate}
+
+This idea of deleting the successor (or predecessor) is pervasive in
+search trees. 
+We will see it again in B trees, Red-Black Trees, and Splay Trees. 
+Clearly, most of the actual work is done in \code{remove-fix}, which
+we explore next.
+
+\subsection{The remove-fix function}
+As we mentioned above, we will ensure that whenever 
+\code{remove-fix(v)} is called, $v$ is a node (possibly a leaf) whose
+balance after the deletion is $b(v) = 0$, and whose subtree has
+decreased by 1 in height. We will see how to ensure this for all
+recursive calls.
+
+When $v$ is the root of the tree, then we are done; everything is
+sufficiently balanced. Otherwise, let $p$ be the parent of $v$.
+As with \code{insert-fix}, in our description, we will assume that $v$
+is the left child of $p$. For the other case, you can again look at
+everything in a mirror.
+We again distinguish three cases based on the value of $b(p)$.
+
+\begin{enumerate}
+\item $b(p) = -1$. In that case, the subtree rooted at $v$ used to be
+  one level higher than the other subtree of $p$.
+  The new balance at $p$ is then $b(p) = 0$, and because the higher
+  one of $p$'s subtrees has shrunk in height by 1, so has $p$'s entire
+  subtree. Therefore, we recursively call \code{remove-fix(p)}; notice
+  that the conditions for calling it are indeed met.
+
+\item $b(p) = 0$. Again, the balance of $p$ increases by 1, because its
+  left subtree become one level smaller. So the new balance is 
+  $b(p) = 1$. But because the other subtree rooted at $p$ had the same
+  height as the one at $v$, the entire subtree rooted at $p$ has not
+  changed in height, and we are done.
+
+\item $b(p) = 1$. Because the balance of $p$ increases by 1, we would
+  now violate the AVL balance property at $p$, so we need to do actual
+  work to fix it. At a high level, the situation looks as shown in
+  Figure~\ref{fig:AVL-remove-before}.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(-3,-3)(3,3)
+\rput(0,0){%
+\pstree{\Tcircle{$p$}~[tnpos=r]{1}}
+       {
+         \pstree{\Tcircle{$v$}~[tnpos=r]{0}}{\Ttri{$T_1$}~{$h$}}
+         \pstree{\Tcircle{$u$}}
+                {
+                 \pstree{\Tp}{\Ttri{$T_2$}~{$h'$}}
+                 \pstree{\Tp}{\Ttri{$T_3$}~{$h''$}}
+                }
+       }
+}
+\end{pspicture}
+\caption{The situation when $p$ already had balance 1.\label{fig:AVL-remove-before}}
+\end{center}
+\end{figure}
+Here, the subtree rooted at node $v$ has height $h$.
+We now distinguish three cases, based on the balance $b(u)$ at node
+$u$ (and the corresponding values of $h'$ and $h''$).
+
+\begin{enumerate}
+\item \label{enum:AVL:brother-zero}
+When $b(u) = 0$, then $h' = h'' = h+1$. 
+In this case, as shown in Figure~\ref{fig:AVL-remove-rotate-0}, we can
+just perform one left rotation at $v$.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(-6,-3)(6,3)
+\rput(-6,0){%
+\pstree{\Tcircle{$p$}~[tnpos=r]{1}}
+       {
+         \pstree{\Tcircle{$v$}~[tnpos=r]{0}}{\Ttri{$T_1$}~{$h$}}
+         \pstree{\Tcircle{$u$}~[tnpos=r]{0}}
+                {
+                 \pstree{\Tp}{\Ttri{$T_2$}~{$h+1$}}
+                 \pstree{\Tp}{\Ttri{$T_3$}~{$h+1$}}
+                }
+       }
+}
+
+\psline[doubleline=true]{->}(-1.25,0)(1.25,0) 
+\rput(0,1){Left Rotation at $p$}
+
+\rput(6,0){%
+\pstree{\Tcircle{$u$}~[tnpos=r]{-1}}
+       {
+         \pstree{\Tcircle{$p$}~[tnpos=r]{1}}
+                {
+                 \pstree{\Tcircle{$v$}~[tnpos=r]{0}}{\Ttri{$T_1$}~{$h$}}
+                 \pstree{\Tp}{\Ttri{$T_2$}~{$h+1$}}
+                }
+         \pstree{\Tp}{\Ttri{$T_3$}~{$h+1$}}
+       }
+}
+\end{pspicture}
+\caption{A single left rotation at $p$ fixes the tree when $b(u) = 0$.
+  \label{fig:AVL-remove-rotate-0}}
+\end{center}
+\end{figure}
+The AVL balance property is restored at all nodes, and the overall
+height of the subtree has stayed at $h+3$, meaning that no more
+changes are needed at ancestor nodes, and we are done.
+
+\item \label{enum:AVL:brother-one}
+When $b(u) = 1$, we have $h'=h$ and $h''=h+1$.
+We can again fix everything locally by performing just one left
+rotation at $v$, as shown in Figure~\ref{fig:AVL-remove-rotate-1}.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(-8,-3)(8,3)
+\rput(-6,0){%
+\pstree{\Tcircle{$p$}~[tnpos=r]{1}}
+       {
+         \pstree{\Tcircle{$v$}~[tnpos=r]{0}}{\Ttri{$T_1$}~{$h$}}
+         \pstree{\Tcircle{$u$}~[tnpos=r]{1}}
+                {
+                 \pstree{\Tp}{\Ttri{$T_2$}~{$h$}}
+                 \pstree{\Tp}{\Ttri{$T_3$}~{$h+1$}}
+                }
+       }
+}
+
+\psline[doubleline=true]{->}(-1.5,0)(1.5,0) 
+\rput(0,1){Left Rotation at $p$}
+
+\rput(6,0){%
+\pstree{\Tcircle{$u$}~[tnpos=r]{0}}
+       {
+         \pstree{\Tcircle{$p$}~[tnpos=r]{0}}
+                {
+                 \pstree{\Tcircle{$v$}~[tnpos=r]{0}}{\Ttri{$T_1$}~{$h$}}
+                 \pstree{\Tp}{\Ttri{$T_2$}~{$h$}}
+                }
+         \pstree{\Tp}{\Ttri{$T_3$}~{$h+1$}}
+       }
+}
+\end{pspicture}
+\caption{When $b(u) = 1$, a single left rotation at $p$ fixes the
+  local problems, but the height of the subtree shrunk, so we need to
+  recurse to higher levels.
+  \label{fig:AVL-remove-rotate-1}}
+\end{center}
+\end{figure}
+As we can see, the balance at all of the involved nodes becomes 0.
+However, the overall height of the subtree has shrunk from $h+3$ to
+$h+2$, so it is possible that problems occur at a higher level.
+Hence, we need to recursively call \code{remove-fix(u)}.
+
+\item \label{enum:AVL:brother-minus-one}
+When $b(u) = -1$, we have $h'=h+1$ and $h''=h$, we cannot simply
+  perform a left rotation at $p$, because the resulting subtree at $v$
+  would have height $h+2$, while $T_3$ only has height $h$. 
+  This would violate the AVL balance condition at the new root $u$.
+
+Instead, we first perform a right rotation at $u$, giving us a higher
+subtree on the right than on the left. Then, the situation resembles
+the case $b(u) = 1$, and we can perform a left rotation.
+The resulting transformation is shown in
+Figure~\ref{fig:AVL-remove-rotate-minus-1}.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.5cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(-11,-5)(11,5)
+\rput(-8,0){%
+\pstree{\Tcircle{$p$}~[tnpos=r]{1}}
+       {
+         \pstree{\Tcircle{$v$}~[tnpos=r]{0}}{\Ttri{$T_1$}~{$h$}}
+         \pstree{\Tcircle{$u$}~[tnpos=r]{-1}}
+                {
+                 \pstree{\Tcircle{$w$}}
+                        {
+                         \pstree{\Tp}{\Ttri{$T_2$}}
+                         \pstree{\Tp}{\Ttri{$T'_2$}}
+                        }
+                  \pstree{\Tp}{\Ttri{$T_3$}~{$h$}}
+                }
+       }
+}
+
+\psline[doubleline=true]{->}(-2,0)(2,0) 
+\rput(0,2){Right Rotation at $u$}
+\rput(0,1){Then Left Rotation at $p$}
+
+\rput(10,0){%
+\pstree{\Tcircle{$w$}~[tnpos=r]{0}}
+       {
+         \pstree{\Tcircle{$p$}}
+                {
+                 \pstree{\Tcircle{$v$}~[tnpos=r]{0}}{\Ttri{$T_1$}~{$h$}}
+                 \pstree{\Tp}{\Ttri{$T_2$}}
+                }
+         \pstree{\Tcircle{$u$}}
+                {
+                 \pstree{\Tp}{\Ttri{$T'_2$}}
+                 \pstree{\Tp}{\Ttri{$T_3$}~{$h$}}
+                }
+       }
+}
+\end{pspicture}
+\caption{When $b(u) = -1$, a right rotation at $u$ followed by a left
+  rotation at $p$ fixes the local problems, but the height of the
+  subtree shrunk, so we need to recurse to higher levels.
+  \label{fig:AVL-remove-rotate-minus-1}}
+\end{center}
+\end{figure}
+
+Notice here that at least one of $T_2$ and $T'_2$ has height $h$,
+while the other has height $h-1$ or $h$. As a result, both subtrees
+rooted at the new root $w$ have height $h+1$, which is one smaller
+than the previous height $h+2$. So while the local problems have been
+fixed, we need to call \code{remove-fix(w)}. 
+\end{enumerate}
+\end{enumerate}
+
+\subsection{Running Time Analysis}
+While the number of cases is slightly larger (and the operations a bit
+more complex) than for insertion, we still only perform a constant
+number of comparisons and rotations per level in \code{remove-fix}, so
+its running time is $O(\log n)$. The work done before in finding a key
+and swapping if necessary also takes $O(\log n)$, so this
+implementation of removal takes time $O(\log n)$.
+
+\subsection{An Example of some Removals}
+Let's also practice AVL removals a little bit.
+We start with the tree on the left in
+Figure~\ref{fig:AVL-removal-sequence-1}.
+First, we remove the key 3 from this tree.
+Because 3 is not in a leaf node, we can't just remove it.
+Instead, we have to swap it with its successor (or predecessor, but
+let's go with the successor here). So we move 4 to the node, and
+instead delete the node that currently holds the key 4.
+Subsequently, we have to call \code{remove-fix} on the deleted node to
+see if anything needs to be fixed.
+When we check the parent (4), we see that its label was 0 before, so
+we don't need to rearrange the tree, just relabel the parent to -1.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(-12,-10)(12,2)
+\rput(-6,0){%
+\pstree{\Tcircle{5}~[tnpos=r]{1}}
+       {
+        \pstree{\Tcircle[fillstyle=solid,fillcolor=lightgray]{3}~[tnpos=r]{0}}
+               {
+               \Tcircle{1}~[tnpos=r]{0}
+               \Tcircle{4}~[tnpos=r]{0}
+               }
+        \pstree{\Tcircle{8}~[tnpos=r]{-1}}
+               {
+                \pstree{\Tcircle{6}~[tnpos=r]{1}}
+                       {
+                        \Tn
+                        \Tcircle{7}~[tnpos=r]{0}
+                       }
+                \Tcircle{9}~[tnpos=r]{0}
+               }
+       }
+}
+
+\psline[doubleline=true]{->}(-1.5,0)(0.5,0) 
+\rput(0,1){Swap 3, 4 and delete 3}
+
+\rput(6,0){%
+\pstree{\Tcircle{5}~[tnpos=r]{1}}
+       {
+        \pstree{\Tcircle{4}~[tnpos=r]{0}}
+               {
+               \Tcircle{1}~[tnpos=r]{0}
+               \Tcircle[fillstyle=solid,fillcolor=lightgray]{$\perp$}~[tnpos=r]{0}
+               }
+        \pstree{\Tcircle{8}~[tnpos=r]{-1}}
+               {
+                \pstree{\Tcircle{6}~[tnpos=r]{1}}
+                       {
+                        \Tn
+                        \Tcircle{7}~[tnpos=r]{0}
+                       }
+                \Tcircle{9}~[tnpos=r]{0}
+               }
+       }
+}
+
+\psline[doubleline=true]{->}(5,-2)(5,-4) 
+\rput(6.5,-3){Relabel 4}
+
+\rput(6,-7){%
+\pstree{\Tcircle{5}~[tnpos=r]{1}}
+       {
+        \pstree{\Tcircle{4}~[tnpos=r]{-1}}
+               {
+               \Tcircle{1}~[tnpos=r]{0}
+               \Tn
+               }
+        \pstree{\Tcircle{8}~[tnpos=r]{-1}}
+               {
+                \pstree{\Tcircle{6}~[tnpos=r]{1}}
+                       {
+                        \Tn
+                        \Tcircle{7}~[tnpos=r]{0}
+                       }
+                \Tcircle{9}~[tnpos=r]{0}
+               }
+       }
+}
+
+\end{pspicture}
+\caption{Removing 3.\label{fig:AVL-removal-sequence-1}}
+\end{center}
+\end{figure}
+
+Next, in Figure~\ref{fig:AVL-removal-sequence-2}, we show the result
+of removing the key 4 from the tree.
+Again, 4 is located in an internal node, which only has a left child. 
+So we swap it with its predecessor (1), then delete the leaf the used
+to contain 1. Again, we have to call \code{remove-fix}.
+
+In this case, we have a node with label 0 (the node with key 1) whose
+parent has label 1 and whose right brother has label -1. This puts us
+in case~\ref{enum:AVL:brother-minus-one} of the \code{remove-fix} function. 
+As we saw there, we need to perform a right rotation at the sibling
+node (here, the one with key 8), follows by a left rotation at the
+parent node (here, the one with label 5).
+At this point, we need to recurse with the parent;
+here, that's the new root 6. 
+Because it is the root, we can terminate now.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(-12,-2)(14,3)
+\rput(-8,0){%
+\pstree{\Tcircle{5}~[tnpos=r]{1}}
+       {
+        \Tcircle[fillstyle=solid,fillcolor=lightgray]{1}~[tnpos=r]{0}
+        \pstree{\Tcircle{8}~[tnpos=r]{-1}}
+               {
+                \pstree{\Tcircle{6}~[tnpos=r]{1}}
+                       {
+                        \Tn
+                        \Tcircle{7}~[tnpos=r]{0}
+                       }
+                \Tcircle{9}~[tnpos=r]{0}
+               }
+       }
+}
+
+\psline[doubleline=true]{->}(-6,0.7)(-4,0.7) 
+\rput(-5,2.5){Right Rotate at 8}
+\rput(-5,1.7){Then Left Rotate at 5}
+
+\rput(0,0){%
+\pstree{\Tcircle[fillstyle=solid,fillcolor=lightgray]{6}~[tnpos=r]{0}}
+       {
+        \pstree{\Tcircle{5}~[tnpos=r]{-1}}
+               {
+                \Tcircle{1}~[tnpos=r]{0}
+                \Tn
+               }
+        \pstree{\Tcircle{8}~[tnpos=r]{0}}
+               {
+                \Tcircle{7}~[tnpos=r]{0}
+                \Tcircle{9}~[tnpos=r]{0}
+               }
+       }
+}
+
+\psline[doubleline=true]{->}(3,0)(5,0) 
+\rput(4,1){At the root}
+
+\rput(8,0){%
+\pstree{\Tcircle{6}~[tnpos=r]{0}}
+       {
+        \pstree{\Tcircle{5}~[tnpos=r]{-1}}
+               {
+                \Tcircle{1}~[tnpos=r]{0}
+                \Tn
+               }
+        \pstree{\Tcircle{8}~[tnpos=r]{0}}
+               {
+                \Tcircle{7}~[tnpos=r]{0}
+                \Tcircle{9}~[tnpos=r]{0}
+               }
+       }
+}
+
+\end{pspicture}
+\caption{Removing 4.\label{fig:AVL-removal-sequence-2}}
+\end{center}
+\end{figure}
+
+Now, in Figure~\ref{fig:AVL-removal-sequence-3},
+let's remove 1 (which is straightforward, just involving
+relabeling and not shown), and then 5. 
+Here, we again have a node with label 0 whose tree height shrunk by
+one, and whose parent has label 1.
+Because the sibling (the node with label 8) has balance 0, we are in
+case \ref{enum:AVL:brother-zero}.
+As we see there, a left rotation at the parent is enough to completely
+fix the tree. Notice that in this case, even if we were not at the
+root, we would not need to recursively change the tree.
+
+\begin{figure}[htb]
+\begin{center}
+\psset{unit=0.7cm,levelsep=7ex,arrowsize=0.1 3}
+\begin{pspicture}(-12,-2)(14,2)
+\rput(-5,0){%
+\pstree{\Tcircle{6}~[tnpos=r]{1}}
+       {
+        \Tcircle[fillstyle=solid,fillcolor=lightgray]{$\perp$}~[tnpos=r]{0}
+        \pstree{\Tcircle{8}~[tnpos=r]{0}}
+               {
+                \Tcircle{7}~[tnpos=r]{0}
+                \Tcircle{9}~[tnpos=r]{0}
+               }
+       }
+}
+
+\psline[doubleline=true]{->}(-1,0)(1,0) 
+\rput(0,1){Left Rotate at 6}
+
+\rput(5,0){%
+\pstree{\Tcircle{8}~[tnpos=r]{-1}}
+       {
+        \pstree{\Tcircle{6}~[tnpos=r]{1}}
+               {
+                \Tn
+                \Tcircle{7}~[tnpos=r]{0}
+               }
+        \Tcircle{9}~[tnpos=r]{0}
+       }
+}
+\end{pspicture}
+\caption{Removing 1, then 5.\label{fig:AVL-removal-sequence-3}}
+\end{center}
+\end{figure}
