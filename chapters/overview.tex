@@ -1,100 +1,69 @@
-If you've gotten this far, you are most likely familiar with the basics of programming C++.
-Specifically, you probably have a good grasp of features such as
+If you've gotten this far, you are expected to be familiar with the basics of programming C++.
+Consider features such as:
 
 \begin{itemize}
 	\item Primitive data types: \texttt{int}, \texttt{string}, \texttt{float}, \texttt{double}, etc.
 	\item Composite data types: arrays, \texttt{struct}.
 	\item Control statements: \texttt{for}, \texttt{while}, \texttt{do while}, \texttt{if}, \texttt{else}, and \texttt{switch}.
-	\item Functions: iterative vs. recursive.
+	\item Functions: declaration, iteration vs. recursion.
 \end{itemize}
 
 In principle, these features are enough to solve any programming problem.
-In fact, in principle, it is enough to have nothing except \texttt{while} loops, integers, and arithmetic.
-Everything that we learn beyond those basics is ``just'' there to help us write better, faster, or more easily maintained or
-understood code.
-Writing ``better'' code comes in two flavors in this context:
+In fact, in principle, it is enough to have nothing except for \texttt{if}, \texttt{while}, integers, and arithmetic.
+Everything beyond those basics is "just" there to help us write code that is better, faster, more easily maintained, or more easily understood.
+
+Of course, these are all fairly critical aspects of programming in the real world.
+Consequently, there is great value in continuing past basic proficiency, and in order to do so, we will focus on two categories of things we can learn that will help us on our way:
+
 \begin{enumerate}
-\item Learning problem-solving and conceptual ideas that let us solve
-  problems which we didn't know how to solve (even though we had the
-  tools in principle), or didn't know how to solve fast enough.
-\item Learning new language features and programming concepts helps us
-  write code that ``feels good,'' in the sense that it is easy to
-  read, debug, and extend.
+\item Ideas, techniques, and patterns that enable us to solve problems that we didn't know how to solve (even though we had the tools to).
+\item Language features and programming concepts that help us write code that is easy to read, debug, and extend.
 \end{enumerate}
 
-The way you are probably thinking about programming at this
-point is that there are some input data
-(maybe a few data items, or an array),
-and the program executes commands to produce an output from the input data.
-Thus, the sequence of instructions --- the algorithm --- is at
-the center of our thinking.
+At this stage, you might think about programming in terms of the data your program interacts with: data is input, the program executes commands, and some corresponding output data is produced.
+In this context, the sequence of instructions, i.e. the \emph{algorithm}, is the emphasis of our thought process.
 
-As you become a better programmer, it is often helpful to put the data
-themselves at the center of your thinking, focusing on how data
-get transformed or changed throughout the execution of the program. 
-Of course, in the end, the program will still mostly do the same,
-but this view often leads to much better (more maintainable, easier to
-understand, and sometimes also more efficient) code. 
-Along the way, you will see how thinking about the organization of your
-data can be really important for determining how fast your code
-executes.
+The goal of this class, and by extension, this textbook, is teach you how to emphasize how data is transformed throughout the execution of a program.
+We will cultivate this skill by examining new ideas, techniques, and patterns in the form of data structures, and you will learn to express them through the lens of object-oriented programming by learning new C++ language features and programming concepts.
+Along the way, you will see how thinking about the organization of your data can provide insight into the efficiency of your programs.
+Ultimately, this will enable you to write code that is more maintainable, easier to understand, and potentially faster.
 
-\begin{example} \label{exm:overview:binary-search}
-Suppose that two students each get a list of the names and e-mails of
-all students in the class.
-One student gets the list sorted alphabetically,
-while the other's version contains the names in random order.
-Both students are asked to look up the e-mail of one particular
-student by name.
+\section{An Example}
+
+\begin{displayquote}
+Two TAs each get a list of the names and emails of the students in the class.
+One gets the list sorted alphabetically, while the other gets it randomly shuffled.
+Both TAs are asked to look up the email of one particular student by name.
 Who would you expect to be faster at the task?
+Except in rare cases, the TA with the sorted list will be much faster, and indeed, this is what happens when we run this experiment in the classroom. 
+\end{displayquote}
 
-Except in rare cases, the student with the sorted list will be much
-faster, and indeed, this is what happens when we run this experiment
-in the classroom. 
-\end{example}
+The way we organize our data can have a profound impact on how fast (or slowly) we can solve a computational task. 
+\emph{How we organize data to support the operations we need is the centerpiece of what you will learn in this class.}
 
-What Example~\ref{exm:overview:binary-search}
-shows us is that the way we organize our data can have a profound
-impact on how fast (or slowly) we can solve a computational task. 
-\emph{The basic question of how to organize data to support the
-  operations we need is the centerpiece of what you will learn in this
-  class.}
-
-What do we mean by ``support the operations we need?''
-Let's go back to the example of looking up e-mails of students by name.
-Here, the key operation is clearly the ``lookup'' operation,
-at least from the standpoint of the student doing the looking up.
-But when we look at the bigger picture,
-those data items (pairs of a student name and an e-mail) had to be
-added into that form somehow.
+What do we mean by "support the operations we need"?
+Let's go back to the example of looking up emails of students by name.
+Here, the key operation is clearly the "lookup" operation, at least from the standpoint of the student doing the looking up.
+But when we look at the bigger picture, those data items (pairs of a student name and an email) had to be added into that form somehow.
 And sometimes, we may want to delete them.
 So really, the three operations we are interested in are:
 
 \begin{itemize}
-\item Insert a pair of a name and e-mail into the list.
+\item Insert a pair of a name and email into the list.
 \item Remove a name from the list.
-\item Look up the e-mail for a given name.
+\item Look up the email for a given name.
 \end{itemize}
 
-Purely from the perspective of speeding up the lookup operation,
-the sorted list was much better than the unsorted one.
-But in terms of inserting items, it is clearly better to keep the list
-unsorted, as we can just append items at the end of the list, and not
-have to worry about putting the item in the right place.
-For removal --- well, you will learn about that a little more later.
+Purely from the perspective of speeding up the lookup operation, the sorted list was much better than the unsorted one.
+But in terms of inserting items, it is clearly better to keep the list unsorted, as we can just append items at the end of the list, and not have to worry about putting the item in the right place.
+For removal---well, you will learn about that a little more later.
 
-It is easy to imagine scenarios where keeping the list sorted is not
-worth it.
-For instance, if we need to add data items all the time,
-but very rarely look them up (say, some kind of backup mechanism for
-disasters), then sorting the list is not worth it.
-Or maybe, the list is so short that even scanning through all the
-items is fast enough.
+It is easy to imagine scenarios where keeping the list sorted is not worth it.
+If we need to add data items all the time but very rarely look them up (say, some kind of backup mechanism for disasters), then sorting the list is not worth it.
+Or perhaps the list is so short that even scanning through all the items is fast enough.
 
-The main take-away message is that the answer to ``What is the best
-way to organize my data?'' is almost always ``It depends.'' 
-You will need to consider how you will be interacting with your data,
-and design an appropriate data structure \emph{in the context of its purpose}. 
+The answer to "what is the best way to organize my data?" is almost always "it depends."
+You will need to consider how you will be interacting with your data and design an appropriate data structure \emph{in the context of its purpose}. 
 Will you be searching through it often?
 Will data be added in frequent, short chunks, or in occasional huge blocks?
 Will you ever have to consolidate multiple versions of your data structure?
