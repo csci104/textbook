@@ -2,10 +2,10 @@ If you've gotten this far, you are expected to be familiar with the basics of pr
 Consider features such as:
 
 \begin{itemize}
-	\item Primitive data types: \texttt{int}, \texttt{string}, \texttt{float}, \texttt{double}, etc.
-	\item Composite data types: arrays, \texttt{struct}.
-	\item Control statements: \texttt{for}, \texttt{while}, \texttt{do while}, \texttt{if}, \texttt{else}, and \texttt{switch}.
-	\item Functions: declaration, iteration vs. recursion.
+\item Primitive data types: \texttt{int}, \texttt{string}, \texttt{float}, \texttt{double}, etc.
+\item Composite data types: arrays, \texttt{struct}.
+\item Control statements: \texttt{for}, \texttt{while}, \texttt{do while}, \texttt{if}, \texttt{else}, and \texttt{switch}.
+\item Functions: declaration, iteration vs. recursion.
 \end{itemize}
 
 In principle, these features are enough to solve any programming problem.
@@ -31,15 +31,15 @@ Ultimately, this will enable you to write code that is more maintainable, easier
 \section{An Example}
 
 \begin{displayquote}
-Two TAs each get a list of the names and emails of the students in the class.
+Two TA's each get a list of the names and emails of the students in the class.
 One gets the list sorted alphabetically, while the other gets it randomly shuffled.
-Both TAs are asked to look up the email of one particular student by name.
+Both TA's are asked to look up the email of one particular student by name.
 Who would you expect to be faster at the task?
 Except in rare cases, the TA with the sorted list will be much faster, and indeed, this is what happens when we run this experiment in the classroom. 
 \end{displayquote}
 
 The way we organize our data can have a profound impact on how fast (or slowly) we can solve a computational task. 
-\emph{How we organize data to support the operations we need is the centerpiece of what you will learn in this class.}
+\emph{How we organize data to support the operations we need is the centerpiece of what you will learn in this class}.
 
 What do we mean by "support the operations we need"?
 Let's go back to the example of looking up emails of students by name.
@@ -69,7 +69,7 @@ Will data be added in frequent, short chunks, or in occasional huge blocks?
 Will you ever have to consolidate multiple versions of your data structure?
 What kinds of queries will you need to ask of your data?
 
-\medskip
+\section{The Notion of Abstract Data Structures}
 
 There is another interesting observation we can take away from the previous
 example. We said that we wanted our data structure to support
@@ -129,8 +129,10 @@ that help with processing the data in it.
 In this way of thinking, an array in which you can only add things at
 the end is different from one in which you are allowed to overwrite
 everywhere, even though the actual way of storing data is the same.
-
 This leads us naturally to \emph{object-oriented design} of programs. 
+
+\section{Object Oriented Programming}
+
 An \emph{object} consists of data and code; it is basically a
 \texttt{struct} with functions inside in addition to the data fields. 
 This opens up a lot of ideas for developing more legible,
@@ -150,7 +152,7 @@ Encapsulation helps you achieve modularity, i.e., it ensures that
 different pieces of code can be analyzed and tested in isolation more 
 easily.
 
-\medskip
+\section{Summary}
 
 To summarize, the learning goals of this class are:
 \begin{enumerate}
