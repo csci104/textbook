@@ -29,59 +29,52 @@ double m;
 \end{verbatim}
 
 The compiler can immediately see that the code requires $4+4\times10+8=52$ bytes, as integers are four bytes wide and doubles are eight\footnote{
-The sizes of primitives are platform dependent, but are generally as described.
-About 20 years ago, \texttt{int} were typically 2 bytes, and \texttt{double} 4 bytes.
-Your code should never have to depend on what is at this moment the size of the basic data types.}.
-On compilation, it will generate code that requests from the operating system the necessary number of bytes on the stack for your variables to be stored.
-In the example above, the compiler knows that the memory will look something like this:
+The sizes of primitives are platform-dependent with some constraints, but are generally as described.
+This means that different operating systems are free to offer primitives with different widths.
+About 20 years ago, \texttt{int} was typically 2 bytes and \texttt{double} 4 bytes.
+If your program needs to deal with a specific size of integer, you can use \texttt{cstdint}.}.
+During compilation, it will generate code that requests the necessary number of bytes on the stack for your variables to be stored.
+When that code is run, the stack might end up looking something like this:
 
 \begin{figure}[htb]
 \setlength{\unitlength}{0.1in}
 \begin{picture}(60,8)
 \linethickness{0.02mm}
-\multiput(0,1)(1,0){55}{\line(0,1){4}}
+\multiput(0,1)(0.75,0){55}{\line(0,1){4}}
 \put(0,1){\line(1,0){60}}
 \put(0,5){\line(1,0){60}}
 \linethickness{0.5mm}
 \put(0,1){\line(0,1){4}}
-\put(4,1){\line(0,1){4}}
-\put(44,1){\line(0,1){4}}
-\put(52,1){\line(0,1){4}}
+\put(3,1){\line(0,1){4}}
+\put(33,1){\line(0,1){4}}
+\put(39,1){\line(0,1){4}}
 
-\put(0.5,6){\line(1,0){3}}
+\put(0.5,6){\line(1,0){2}}
 \put(0.5,6){\line(0,-1){0.5}}
+\put(2.5,6){\line(0,-1){0.5}}
+\put(1,7){$n$}
+\put(3.5,6){\line(1,0){2}}
 \put(3.5,6){\line(0,-1){0.5}}
-\put(2,7){$n$}
-\put(4.5,6){\line(1,0){3}}
-\put(4.5,6){\line(0,-1){0.5}}
-\put(7.5,6){\line(0,-1){0.5}}
-\put(5,7){$x[0]$}
-\put(24.5,6){\line(1,0){3}}
-\put(24.5,6){\line(0,-1){0.5}}
-\put(27.5,6){\line(0,-1){0.5}}
-\put(25,7){$x[5]$}
-\put(44.5,6){\line(1,0){7}}
-\put(44.5,6){\line(0,-1){0.5}}
-\put(51.5,6){\line(0,-1){0.5}}
-\put(48,7){$m$}
+\put(5.5,6){\line(0,-1){0.5}}
+\put(3.5,7){$x[0]$}
+\put(18.5,6){\line(1,0){2}}
+\put(18.5,6){\line(0,-1){0.5}}
+\put(20.5,6){\line(0,-1){0.5}}
+\put(18.5,7){$x[5]$}
+\put(33.5,6){\line(1,0){5}}
+\put(33.5,6){\line(0,-1){0.5}}
+\put(38.5,6){\line(0,-1){0.5}}
+\put(35.5,7){$m$}
 \end{picture}
 \caption{The layout of memory on the stack for the declaration above.}
 \end{figure}
 
-It knows the exact memory address of each variable;
-in fact, whenever we write \texttt{n}, this gets translated into
-something like ``memory address 4127963'' internally.
+During runtime, our program knows the exact memory address of each variable.
+Wherever we accessed or modified \texttt{n}, the program sees a reference to that variable's location in memory; perhaps something like \texttt{0x6a584c}, as memory addresses are typically represented in hexadecimal.
 
-Notice that if we attempted to access $x[10]$ here, we would access
-the data associated with $m$, and may end up reading (or overwriting)
-some of its bits.
-This would almost certainly have very undesirable consequences for the
-rest of the program.
-In fact, accessing out-of-bounds memory locations is the root cause of
-a huge fraction of software bugs,
-ranging from CSCI 104 homework nightmares
-to professional software glitches that cause billions of dollars in
-damages and massive security breaches.
+Notice that if we attempted to access $x[10]$ here, we would access the data associated with $m$, and may end up reading (or overwriting) some of its bits.
+This would almost certainly have very undesirable consequences for the rest of the program.
+In fact, accessing out-of-bounds memory locations is the root cause of a huge fraction of software bugs, ranging from CSCI 104 homework nightmares to professional software glitches that cause billions of dollars in damages and massive security breaches.
 
 \begin{figure}[htb]
 \centering
@@ -89,15 +82,10 @@ damages and massive security breaches.
 \caption{XKCD \# 1353: Explanation of the Heartbleed Bug}
 \end{figure}
 
-When functions call other functions, each function gets its own chunk
-of stack memory at the moment it is called;
-it keeps all its local variables there, but also a program counter
-that remembers where in its execution it was.
-When the function finishes, its stack memory block is made available
-for other purposes again.
-For statically allocated variables,
-the compiler can take care of all of this, and you typically don't
-have to think about it.
+When a function is invoked, it gets its own chunk of stack memory at the moment it is called.
+This is where the function keeps its local variables along with a program counter, which remembers where in its execution whoever called it was.
+When the function finishes, its stack memory block is made available for other purposes again.
+For statically allocated variables, the compiler can take care of all of this, and you typically don't have to think about it.
 
 \section{Scoping of Variables}
 While we are talking about local variables and the stack, we should
